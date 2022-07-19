@@ -1,37 +1,29 @@
 use std::convert::Infallible;
-use crate::value::Values;
-
-#[derive(Debug)]
-pub enum OpCode {
-    OP_RETURN,
-    OP_DEBUG
-}
-
-// impl TryFrom<u8> for OpCode {
-//     type Error = &'static str;
-//
-//     fn try_from(value: u8) -> Result<Self, Self::Error> {
-//         match value {
-//             0..=1 => {
-//                 Ok( unsafe { std::mem::transmute(value)} )
-//             }
-//             _ => {
-//                 Err("Invalid Instruction")
-//             }
-//         }
-//     }
-// }
+use crate::op_code::OpCode;
 
 pub struct Chunk {
     pub code: Vec<OpCode>,
-    pub values: Values,
+    pub constants: Vec<f32>, // couldo: abstract Vec<u8> into struct and give it functionality
+    pub lines: Vec<u8>,
+}
+
+impl Chunk {
+    pub fn write_chunk(&mut self, op: OpCode, line: u8) {
+        self.code.push(op);
+        self.lines.push(line);
+    }
+    // todo: change from f32 to a generic data structure
+    pub fn add_constant(&mut self, constant: f32) {
+        self.constants.push(constant);
+    }
 }
 
 impl Default for Chunk {
     fn default() -> Self {
         Chunk {
             code: Vec::default(),
-            values: Values::default(),
+            constants: Vec::default(),
+            lines: Vec::default(),
         }
     }
 }
