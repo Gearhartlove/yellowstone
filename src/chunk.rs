@@ -1,9 +1,10 @@
 use std::convert::Infallible;
 use crate::op_code::OpCode;
+use crate::value::Value;
 
 pub struct Chunk {
     pub code: Vec<OpCode>,
-    pub constants: Vec<f32>, // couldo: abstract Vec<u8> into struct and give it functionality
+    pub constants: Vec<Value>, // couldo: abstract Vec<u8> into struct and give it functionality
     pub lines: Vec<u8>,
 }
 
@@ -14,7 +15,7 @@ impl Chunk {
     }
     // todo: change from f32 to a generic data structure
     pub fn add_constant(&mut self, constant: f32) {
-        self.constants.push(constant);
+        self.constants.push(Value {value: constant});
     }
 }
 
