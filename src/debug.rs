@@ -56,5 +56,8 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u8, lines: &Vec<u8
             simple_instruction("OP_RETURN", offset);
         }
         OP_DEBUG => todo!(),
+        OP_NEGATE => {
+            simple_instruction("OP_NEGATE", offset);
+        }
     }
 }

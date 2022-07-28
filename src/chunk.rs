@@ -13,7 +13,7 @@ impl Chunk {
         self.code.push(op);
         self.lines.push(line);
     }
-    // todo: change from f32 to a generic data structure
+
     pub fn add_constant(&mut self, constant: f32) {
         self.constants.push(Value {value: constant});
     }

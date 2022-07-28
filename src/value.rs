@@ -1,5 +1,6 @@
 use crate::value;
 
+#[derive(Debug)]
 pub struct Value {
     // todo: add type abstraction
     pub value: f32,
