@@ -5,4 +5,10 @@ pub enum OpCode {
     OP_RETURN,
     OP_DEBUG,
     OP_NEGATE,
+    //binary
+    OP_ADD,
+    OP_SUBTRACT,
+    OP_MULTIPLY,
+    OP_DIVIDE,
+    //
 }

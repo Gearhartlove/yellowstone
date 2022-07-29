@@ -46,18 +46,14 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u8, lines: &Vec<u8
         print!("{:4} ", lines[*offset as usize]);
     }
     match instruction {
-        OP_CONSTANT_LONG(constant) => {
-            constant_instruction(instruction, offset);
-        }
-        OP_CONSTANT(constant) => {
-            constant_instruction(instruction, offset);
-        }
-        OP_RETURN => {
-            simple_instruction("OP_RETURN", offset);
-        }
+        OP_CONSTANT_LONG(constant) => { constant_instruction(instruction, offset); }
+        OP_CONSTANT(constant) => { constant_instruction(instruction, offset); }
+        OP_RETURN => { simple_instruction("OP_RETURN", offset); }
+        OP_NEGATE => { simple_instruction("OP_NEGATE", offset);}
+        OP_ADD => { simple_instruction("OP_ADD", offset); }
+        OP_SUBTRACT => { simple_instruction("OP_SUBTRACT", offset); }
+        OP_MULTIPLY => { simple_instruction("OP_MULTIPLY", offset); }
+        OP_DIVIDE => { simple_instruction("OP_DIVIDE", offset); }
         OP_DEBUG => todo!(),
-        OP_NEGATE => {
-            simple_instruction("OP_NEGATE", offset);
-        }
     }
 }
