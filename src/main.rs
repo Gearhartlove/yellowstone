@@ -1,13 +1,16 @@
 extern crate core;
 
 use std::borrow::BorrowMut;
-use std::mem;
+use std::{env, mem};
 use std::mem::{size_of, size_of_val};
+use std::process::exit;
+use std::fs;
 use crate::chunk::Chunk;
 use crate::debug::disassemble_chunk;
+use crate::InterpretResult::{INTERPRET_COMPILE_ERROR, INTERPRET_RUNTIME_ERROR};
 use crate::op_code::OpCode::*;
 use crate::stack::Stack;
-use crate::vm::VM;
+use crate::vm::{InterpretResult, VM};
 
 mod chunk;
 mod common;
@@ -17,29 +20,53 @@ mod value;
 mod op_code;
 mod vm;
 mod stack;
+mod scanner;
 
 fn main() {
-    let mut chunk = Chunk::default();
-    let foo = 1.2;
-    let bar = 3.4;
-
-    let sop = 5.6;
-
-    chunk.add_constant(foo);
-    chunk.write_chunk(OP_CONSTANT(foo), 123); // 1.2
-    chunk.write_chunk(OP_CONSTANT(bar), 123); // 3.4
-    chunk.write_chunk(OP_ADD, 123); // a(1.2) + b(3.4) = 4.6
-    chunk.write_chunk(OP_CONSTANT(sop), 123); // 5.6
-    chunk.write_chunk(OP_DIVIDE, 123); // a(4.6) + b(5.6) = 0.8
-    chunk.write_chunk(OP_NEGATE, 123); // -0.8
-    chunk.write_chunk(OP_RETURN, 123); // -0.8
-    disassemble_chunk(&chunk, "test chunk");
+    let args: Vec<String> = env::args().collect();
 
     let mut vm: VM = VM {
-        chunk: Some(&chunk),
+        // chunk: Some(&chunk),
+        chunk: None,
         ip: 0,
         stack: Stack::default()
     };
 
-    vm.run();
+    if args.len() == 1 {
+        repl();
+    } else if args.len() == 2 {
+        run_file(args.get(1).unwrap())
+    } else {
+        eprint!("Usage: clox [path]\n");
+        exit(64);
+    }
+}
+
+fn run_file(path: &str, vm: &mut VM) {
+    let source = fs::read_to_string(path)
+        .expect(format!("The file at {path} does not exist").as_str());
+    let result = vm.interpret(&source);
+
+    // couldo: custom exit 'enums'
+    // ref: https://blog.rust-lang.org/2022/05/19/Rust-1.61.0.html
+    if result == INTERPRET_COMPILE_ERROR { exit(65) }
+    if result == INTERPRET_RUNTIME_ERROR { exit(70) }
+}
+
+fn repl(vm: &mut VM) {
+    let mut line = String::new();
+    loop {
+        // request std input stream and print result
+        match std::io::stdin().read_line(&mut line) {
+            Ok(n) => {
+                print!("> {line}");
+            }
+            Err(error) => println!("> error: {error}"),
+        }
+        // if () {
+        //
+        // }
+        vm.interpret(&line);
+        line.clear(); // clear buffer for next repl
+    }
 }
