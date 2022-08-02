@@ -2,6 +2,7 @@
 
 use std::fmt::{Display, Formatter};
 use crate::scanner::TokenKind::{TOKEN_EOF, TOKEN_ERROR};
+use crate::util::bytes_between;
 
 #[derive(Debug, PartialEq)]
 pub enum TokenKind {
@@ -81,7 +82,7 @@ impl Scanner {
 
     fn make_token(&self, kind: TokenKind) -> Token {
         let start = self.start;
-        let length = self.current - self.start;
+        let length = bytes_between(self.current, self.start) as usize; //number of bytes between both memory locations
         let line = self.line;
         let token = Token::new(kind, start, length, line);
         return token;
