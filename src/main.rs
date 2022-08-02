@@ -34,9 +34,9 @@ fn main() {
     };
 
     if args.len() == 1 {
-        repl();
+        repl(&mut vm);
     } else if args.len() == 2 {
-        run_file(args.get(1).unwrap())
+        run_file(args.get(1).unwrap(), &mut vm)
     } else {
         eprint!("Usage: clox [path]\n");
         exit(64);
@@ -46,6 +46,7 @@ fn main() {
 fn run_file(path: &str, vm: &mut VM) {
     let source = fs::read_to_string(path)
         .expect(format!("The file at {path} does not exist").as_str());
+
     let result = vm.interpret(&source);
 
     // couldo: custom exit 'enums'

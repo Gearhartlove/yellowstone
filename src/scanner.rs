@@ -94,10 +94,13 @@ impl Scanner {
         let length = message.len();
         let line = self.line;
         let token = Token::new(kind, start, length, line);
+        return token;
     }
 
     fn is_at_end(&self) -> bool {
-        return self.current as char == '\0';
+        unsafe {
+            return *self.current as char == '\0';
+        }
     }
 }
 
