@@ -11,3 +11,13 @@ pub fn bytes_between(f: *const u8, l: *const u8) -> i64 {
     let result = result.abs();
     return result;
 }
+
+pub fn is_digit(c: char) -> bool {
+    return c >= '0' && c <= '9';
+}
+
+pub fn is_alpha(c: char) -> bool {
+    return c >= 'a' && c <= 'z' ||
+           c >= 'A' && c <= 'Z' ||
+           c == '_';
+}

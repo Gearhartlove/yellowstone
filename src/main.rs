@@ -27,7 +27,6 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let mut vm: VM = VM {
-        // chunk: Some(&chunk),
         chunk: None,
         ip: 0,
         stack: Stack::default()
@@ -60,14 +59,11 @@ fn repl(vm: &mut VM) {
     loop {
         // request std input stream and print result
         match std::io::stdin().read_line(&mut line) {
-            Ok(n) => {
+            Ok(_) => {
                 print!("> {line}");
             }
             Err(error) => println!("> error: {error}"),
         }
-        // if () {
-        //
-        // }
         vm.interpret(&line);
         line.clear(); // clear buffer for next repl
     }
