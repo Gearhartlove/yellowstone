@@ -81,12 +81,6 @@ impl Token {
     }
 }
 
-// impl Token {
-//     pub fn kind_as_str(&self) -> String {
-//         self.kind
-//     }
-// }
-
 pub struct Scanner {
     pub start: *const u8,
     pub current: *const u8,
@@ -101,7 +95,7 @@ impl Scanner {
             return Token::make_token(TOKEN_EOF);
         }
 
-        let c = self.advance() as char;
+        let c = unsafe {*self.advance() as char};
         if is_alpha(c) {
             return self.tokenize_string();
         }
@@ -205,7 +199,7 @@ impl Scanner {
             return None;
         }
         unsafe {
-            return Some(*self.current + 1 as char)
+            return Some(*self.current.add(1) as char)
         }
     }
 
@@ -270,16 +264,17 @@ impl Scanner {
     }
 
     fn tokenize_number(&mut self) -> Token {
-        while self.is_digit(self.peek()) {
+        while is_digit(self.peek()) {
             self.advance();
         }
 
         // Look for a fractional part
-        if self.peek() == '.' && self.is_digit(self.peek_next()) {
+        let peek_next = self.peek_next().unwrap();
+        if self.peek() == '.' && is_digit(peek_next) {
             // Consume the "."
             self.advance();
 
-            while self.is_digit(self.peek()) {
+            while is_digit(self.peek()) {
                 self.advance();
             }
         }
@@ -290,12 +285,59 @@ impl Scanner {
         while is_alpha(self.peek()) || is_digit(self.peek()) {
             self.advance();
         }
-        return self.make_token(identifier_type())
+        return self.make_token(self.identifier_type())
     }
-}
 
-pub fn identifier_type() -> TokenKind {
-    return TOKEN_IDENTIFIER;
+    fn identifier_type(&self) -> TokenKind {
+        let c = unsafe { *self.start as char };
+        match c as char {
+            'a' => return self.check_keyword(1, 2, "nd", TOKEN_AND),
+            'c' => return self.check_keyword(1, 4, "lass", TOKEN_CLASS),
+            'e' => return self.check_keyword(1, 3, "lse", TOKEN_ELSE),
+            'f' => {
+                if bytes_between(self.current, self.start) > 1 {
+                    match self.peek() {
+                        'a' => return self.check_keyword(2, 3, "lse", TOKEN_FALSE),
+                        'o' => return self.check_keyword(2, 1, "r", TOKEN_FOR),
+                        'u' => return self.check_keyword(2, 1, "n", TOKEN_FUN),
+                        _ => {}
+                    }
+                }
+            }
+            'i' => return self.check_keyword(1, 1, "f", TOKEN_IF),
+            'n' => return self.check_keyword(1, 2, "il", TOKEN_NIL),
+            'o' => return self.check_keyword(1, 1, "or", TOKEN_OR),
+            'p' => return self.check_keyword(1, 4, "rint", TOKEN_PRINT),
+            'r' => return self.check_keyword(1, 5, "eturn", TOKEN_RETURN),
+            's' => return self.check_keyword(1, 4, "uper", TOKEN_SUPER),
+            't' => {
+                if bytes_between(self.current, self.start) > 1 {
+                    match self.peek() {
+                        'h' => return self.check_keyword(2, 2, "is", TOKEN_THIS),
+                        'r' => return self.check_keyword(2, 2, "ue", TOKEN_TRUE),
+                        _ => {}
+                    }
+                }
+            }
+            'v' => return self.check_keyword(1, 2, "ar", TOKEN_VAR),
+            'w' => return self.check_keyword(1, 4, "hile", TOKEN_WHILE),
+            _ => {},
+        }
+        return TOKEN_IDENTIFIER;
+    }
+
+    fn check_keyword(&self, start: u8, length: u8, rest: &str, kind: TokenKind) -> TokenKind {
+        let keyword_start = unsafe {
+              new_inc_ptr(self.start, start as usize)
+        };
+
+        if bytes_between(self.current, self.start) == (start + length) as i64
+            && memcmp_equal( keyword_start, rest, length as usize) {
+            return kind;
+        } else {
+            return TOKEN_IDENTIFIER
+        }
+    }
 }
 
 impl From<&String> for Scanner {
