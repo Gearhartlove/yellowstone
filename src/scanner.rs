@@ -77,9 +77,6 @@ impl Token {
         }
     }
 
-    pub fn make_token(kind: TokenKind) -> Token {
-        unimplemented!()
-    }
 }
 
 pub struct Scanner {
@@ -93,13 +90,14 @@ impl Scanner {
     pub fn scan_token(&mut self) -> Token {
         self.skip_whitespace();
 
-        if self.is_at_end() {
-            return Token::make_token(TOKEN_EOF);
-        }
-
         self.start = self.advance();
 
+        if self.is_at_end() {
+            return self.make_token(TOKEN_EOF);
+        }
+
         let c = unsafe { *self.current_byte() as char };
+        eprint!("{}", c); // debug
 
         if is_alpha(c) {
             return self.tokenize_string();
@@ -191,14 +189,15 @@ impl Scanner {
     fn advance(&mut self) -> *const u8 {
         unsafe {
             self.current += 1; // advancing the pointer
-            // 0, 1, 2, ...
             return self.start.add(self.current as usize);
         }
     }
 
     fn peek(&self) -> char {
         unsafe {
-            return *self.start.add(self.current as usize) as char;
+            let mut offset = self.current;
+            offset += 1; // peeking at the next value
+            return *self.start.add(offset as usize) as char;
         }
     }
 
