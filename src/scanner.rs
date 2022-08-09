@@ -1,12 +1,13 @@
 // Design Decision: Scan token only when the compiler needs a token
 
 use std::fmt::{Display, Formatter};
+use std::str::Chars;
 use std::thread::current;
 use crate::scanner::TokenKind::*;
 use crate::util::*;
 
 #[derive(Debug, PartialEq)]
-pub enum TokenKind {
+pub enum TokenKind<'a> {
     // Single-character tokens.
     TOKEN_LEFT_PAREN,
     TOKEN_RIGHT_PAREN,
@@ -30,8 +31,8 @@ pub enum TokenKind {
     TOKEN_LESS_EQUAL,
     // Literals.
     TOKEN_IDENTIFIER,
-    TOKEN_STRING,
-    TOKEN_NUMBER,
+    TOKEN_STRING(&'a str),
+    TOKEN_NUMBER(&'a str),
     // Keywords.
     TOKEN_AND,
     TOKEN_CLASS,
@@ -54,51 +55,48 @@ pub enum TokenKind {
     TOKEN_EOF,
 }
 
-impl Display for TokenKind {
+impl<'a> Display for TokenKind<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-pub struct Token {
-    pub kind: TokenKind,
-    pub start: *const u8,
-    pub length: usize,
+pub struct Token<'a> {
+    pub kind: TokenKind<'a>,
     pub line: u8,
+    pub literal: Option<&'a str>,
 }
 
-impl Token {
-    pub fn new(kind: TokenKind, start: *const u8, length: usize, line: u8) -> Self {
+impl<'a> Token<'a> {
+    pub fn new(kind: TokenKind, line: u8, literal: Option<&str>) -> Self {
         Token {
             kind,
-            start,
-            length,
+            literal,
             line,
         }
     }
 
 }
 
-pub struct Scanner {
-    pub start: *const u8,
-    pub current: isize,
-    source_length: usize,
-    line: u8,
+pub struct Scanner<'a> {
+    pub source: Chars<'a>,
+    pub line: u8,
 }
 
-impl Scanner {
+impl<'a> Scanner<'a> {
+    /// Looks at each character in the source code and creates tokens derived from those characters.
     pub fn scan_token(&mut self) -> Token {
         self.skip_whitespace();
 
-        self.start = self.advance();
+        // current considered character
+        let c = self.advance();
 
+        // return true after scanning all tokens
         if self.is_at_end() {
             return self.make_token(TOKEN_EOF);
         }
 
-        let c = unsafe { *self.current_byte() as char };
-        eprint!("{}", c); // debug
-
+        // multi character lexemes, must be converted to &str
         if is_alpha(c) {
             return self.tokenize_string();
         }
@@ -162,43 +160,39 @@ impl Scanner {
     }
 
     fn make_token(&self, kind: TokenKind) -> Token {
-        let current_byte = self.current_byte();
-        //number of bytes between both memory locations
-        let length = bytes_between(current_byte, self.start) as usize;
-
-        let start = self.start;
-        let line = self.line;
-        let token = Token::new(kind, start, length, line);
-        return token;
+        return match kind {
+            TOKEN_STRING(literal) | TOKEN_NUMBER(literal) => {
+                Token::new(kind, self.line, Some(literal))
+            },
+            _ => {
+                // the character of the token can be inferred from it's kind
+                Token::new(kind, self.line, None)
+            },
+        };
     }
 
     fn error_token(&self, message: &str) -> Token {
-        let kind = TOKEN_ERROR;
-        let start = message.as_bytes().first().unwrap();
-        let length = message.len();
-        let line = self.line;
-        let token = Token::new(kind, start, length, line);
-        return token;
+        return Token::new(TOKEN_ERROR, self.line, Some(message));
     }
 
-    // debug: check for off by one
+    /// Checks the Char iterator for a next character. If no other charters exist, the scanner has reached the end.
     pub fn is_at_end(&self) -> bool {
-        return self.current >= self.source_length.try_into().unwrap();
+        if let None = self.source.peekable().peek() {
+            return true;
+        }
+        return false;
     }
 
-    fn advance(&mut self) -> *const u8 {
-        unsafe {
-            self.current += 1; // advancing the pointer
-            return self.start.add(self.current as usize);
+    fn advance(&mut self) -> char {
+        let next = self.source.next();
+        match next {
+            None => { panic!("Advancing when no character next!")},
+            Some(c) => { return c}
         }
     }
 
     fn peek(&self) -> char {
-        unsafe {
-            let mut offset = self.current;
-            offset += 1; // peeking at the next value
-            return *self.start.add(offset as usize) as char;
-        }
+        let c = self.source.peekable().peek().unwrap();
     }
 
     fn peek_next(&self) -> Option<char> {
@@ -254,11 +248,14 @@ impl Scanner {
     }
 
     fn tokenize_string(&mut self) -> Token {
+        let mut word = String::new();
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' {
+                // increment line for debugging
                 self.line += 1;
             }
-            self.advance();
+            let c = self.advance();
+            word.push(c);
         }
 
         if self.is_at_end() {
@@ -266,27 +263,33 @@ impl Scanner {
         }
 
         // The closing quote
-        self.advance();
-        return self.make_token(TOKEN_STRING);
+        let _ = self.advance();
+        return self.make_token(TOKEN_STRING(word.as_str()));
     }
 
     fn tokenize_number(&mut self) -> Token {
-        while is_digit(self.peek()) {
-            self.advance();
-        }
+        let mut integer_literal: Vec<char> = vec!();
+        let consume_numbers = || {
+            while is_digit(self.peek()) {
+                let c = self.advance();
+                integer_literal.push(c);
+            }
+        };
 
-        // Look for a fractional part
-        if let Some(peek_next) = self.peek_next() {
-            if self.peek() == '.' && is_digit(peek_next) {
+        consume_numbers();
+
+        // Look for decimal of number
+        if let Some(c) = self.peek_next() {
+            if self.peek() == '.' && is_digit(c) {
                 // Consume the "."
-                self.advance();
+                let c = self.advance();
+                integer_literal.push(c);
 
-                while is_digit(self.peek()) {
-                    self.advance();
-                }
+                consume_numbers();
             }
         }
-        return self.make_token(TOKEN_NUMBER);
+        let str_number = integer_literal.iter().map().collect::<&str>();
+        return self.make_token(TOKEN_NUMBER(str_number));
     }
 
     fn tokenize_identifier(&mut self) -> Token {
@@ -360,15 +363,9 @@ impl Scanner {
 
 impl From<&String> for Scanner {
     fn from(source: &String) -> Self {
-        let bytes = source.as_bytes();
-        let start = bytes.first().unwrap();
-        let current = -1;
-        let source_length = source.len(); // necessary to tell to insert EOF token
+        let source = source.chars();
         Scanner {
-            start,
-            current,
-            line: 1,
-            source_length,
+            source,
         }
     }
 }
