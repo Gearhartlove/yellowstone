@@ -1,12 +1,11 @@
-use std::ops::Neg;
 use crate::{Chunk, disassemble_chunk};
 use crate::op_code::OpCode;
 use crate::op_code::OpCode::*;
 use crate::scanner::{Scanner, Token};
 use crate::scanner::TokenKind::TOKEN_EOF;
-use crate::vm::InterpretResult::{INTERPRET_CONTINUE, INTERPRET_OK};
 use crate::stack::Stack;
 use crate::value::Value;
+use crate::vm::InterpretResult::{INTERPRET_CONTINUE, INTERPRET_OK};
 
 pub const DEBUG_TRACE_EXECUTION: bool = false;
 
@@ -35,7 +34,7 @@ impl VM<'_> {
         let mut scanner = Scanner::from(source);
         let mut line = 0; //todo: why start at -1 in book ?
         loop {
-            let token: Token = scanner.scan_token(); //todo scanner.scan_token() implementation
+            let token: Token = scanner.scan_token();
             if token.line != line {
                 print!("{:4}", token.line);
                 line = token.line;
@@ -44,15 +43,7 @@ impl VM<'_> {
             }
             // todo create a print word
             print!("{:2} ", token.kind);
-            print!("'");
-            for i in 0..token.length {
-                unsafe {
-                    let c = *token.start.add(i) as char;
-                    print!("{}", c);
-                }
-            }
-            print!("'");
-            println!();
+            println!("'{}'", token.literal());
 
             if token.kind == TOKEN_EOF {
                 break;

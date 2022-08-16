@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 
 pub struct Stack<T> {
     pub stack: Vec<T>,

@@ -1,4 +1,3 @@
-use std::convert::Infallible;
 use crate::Chunk;
 use crate::op_code::OpCode;
 use crate::op_code::OpCode::*;
