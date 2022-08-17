@@ -6,6 +6,7 @@ use yellowstone::scanner::TokenKind::*;
 
 #[test]
 fn tokenizer_basic_test() {
+    // assert_tokens_are!("0", TOKEN_EOF);
     assert_tokens_are!("1", TOKEN_NUMBER("1".to_string()), TOKEN_EOF);
     // assert_tokens_are!("1.0", TOKEN_NUMBER, TOKEN_EOF);
     // assert_tokens_are!("+", TOKEN_PLUS, TOKEN_EOF);

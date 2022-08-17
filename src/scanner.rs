@@ -61,6 +61,7 @@ impl Display for TokenKind {
     }
 }
 
+#[derive(Debug)]
 pub struct Token {
     pub kind: TokenKind,
     pub line: u8,
@@ -219,11 +220,12 @@ impl<'a> Scanner<'_> {
 
     /// Checks the Char iterator for a next character. If no other charters exist, the scanner has reached the end.
     pub fn is_at_end(&self) -> bool {
-        // how to peek at Chars?
-        if let None = self.source.clone().peekable().peek() {
-            return true;
-        }
-        return false;
+        let mut source = self.source.clone().peekable();
+        let peek = source.peek();
+        return match peek {
+            None => true,
+            _ => false,
+        };
     }
 
     fn advance(&mut self) -> char {
@@ -235,7 +237,8 @@ impl<'a> Scanner<'_> {
     }
 
     fn peek(&self) -> Option<char> {
-        let peek = self.source.clone().peekable().peek().cloned();
+        let mut source = self.source.clone().peekable();
+        let peek = source.peek().cloned();
         return peek;
     }
 
@@ -244,9 +247,9 @@ impl<'a> Scanner<'_> {
             return None;
         }
         // peek the next character
-        let mut peekable = self.source.clone().peekable();
-        peekable.next();
-        let peek = peekable.peek().cloned();
+        let mut source = self.source.clone().peekable();
+        source.next();
+        let peek = source.peek().cloned();
         return peek;
     }
 
@@ -417,5 +420,18 @@ impl<'a> From<&'a String> for Scanner<'a> {
             source,
             line: 0,
         }
+    }
+}
+
+// tests
+mod tests {
+    use crate::scanner::Scanner;
+
+    #[test]
+    fn init() {
+        let source = String::from("42 is the answer to life");
+        let mut scanner = Scanner::from(&source);
+        let token = scanner.scan_token();
+        dbg!(token);
     }
 }
