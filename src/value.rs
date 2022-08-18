@@ -1,14 +1,13 @@
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Display, Formatter};
 
 pub struct Value {
-    // todo: add type abstraction
     pub value: f32,
 }
 
 impl Value {
-    pub fn get(&self) -> f32 {
-        self.value
-    }
+    // pub fn get(&self) -> f32 {
+    //     self.value
+    // }
 }
 
 impl From<f32> for Value {

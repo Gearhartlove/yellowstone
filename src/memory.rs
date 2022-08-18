@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 // pub fn reallocate(mut chunk: &Chunk, new_size: usize) -> Option<Chunk>{
 //     if new_size == 0 {
 //         drop(chunk);

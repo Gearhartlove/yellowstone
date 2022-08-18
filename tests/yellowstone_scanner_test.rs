@@ -6,14 +6,26 @@ use yellowstone::scanner::TokenKind::*;
 
 #[test]
 fn tokenizer_basic_test() {
-    // assert_tokens_are!("0", TOKEN_EOF);
     assert_tokens_are!("1", TOKEN_NUMBER("1".to_string()), TOKEN_EOF);
-    // assert_tokens_are!("1.0", TOKEN_NUMBER, TOKEN_EOF);
-    // assert_tokens_are!("+", TOKEN_PLUS, TOKEN_EOF);
+    assert_tokens_are!("1 + 1", TOKEN_NUMBER("1".to_string()), TOKEN_PLUS, TOKEN_NUMBER("1".to_string()), TOKEN_EOF);
+    assert_tokens_are!("1 \n + \n 1 ", TOKEN_NUMBER("1".to_string()), TOKEN_PLUS, TOKEN_NUMBER("1".to_string()), TOKEN_EOF);
 }
 
 #[test]
-fn tokenizer_additive_test() {
-    // skipping the + symbol
-    // assert_tokens_are!("1 + 1", TOKEN_NUMBER, TOKEN_PLUS, TOKEN_NUMBER, TOKEN_EOF );
-}
+fn tokenizer_whitespace_test() {}
+
+#[test]
+fn tokenizer_number_test() {}
+
+#[test]
+fn tokenizer_string_test() {}
+
+// note: refactoring involved
+#[test]
+fn tokenizer_identifier_test() {}
+
+#[test]
+fn tokenizer_binary_test() {}
+
+#[test]
+fn tokenizer_unary_test() {}

@@ -17,6 +17,7 @@ pub struct VM<'a> {
 }
 
 #[derive(PartialEq)]
+#[allow(non_camel_case_types)]
 pub enum InterpretResult {
     INTERPRET_CONTINUE,
     INTERPRET_OK,

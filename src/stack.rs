@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 pub struct Stack<T> {
     pub stack: Vec<T>,
 }
@@ -17,8 +15,13 @@ impl<T> Stack<T> {
         return self.stack.is_empty();
     }
 
-    pub fn peek(&self) -> Option<&T> {
-        return self.peek();
+    pub fn peek(&mut self) -> Option<&T> {
+        // let pop = self.pop();
+        // if let Some(value) = pop {
+        //     let value_reference = &value;
+        //     self.push(value);
+        //     return Some(value_reference);
+        // } return None;
     }
 
     pub fn reset(&mut self) {

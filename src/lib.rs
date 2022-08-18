@@ -2,7 +2,6 @@ extern crate core;
 
 use crate::chunk::Chunk;
 use crate::debug::disassemble_chunk;
-use crate::op_code::OpCode::*;
 
 pub mod scanner;
 pub mod test_macros;

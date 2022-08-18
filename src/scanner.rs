@@ -7,6 +7,7 @@ use crate::scanner::TokenKind::*;
 use crate::util::*;
 
 #[derive(Debug, PartialEq, Clone)]
+#[allow(non_camel_case_types)]
 pub enum TokenKind {
     // Single-character tokens.
     TOKEN_LEFT_PAREN,
@@ -51,7 +52,7 @@ pub enum TokenKind {
     TOKEN_VAR,
     TOKEN_WHILE,
 
-    TOKEN_ERROR,
+    TOKEN_ERROR(String),
     TOKEN_EOF,
 }
 
@@ -115,7 +116,7 @@ impl Token {
             TOKEN_TRUE => { "true" }
             TOKEN_VAR => { "var" }
             TOKEN_WHILE => { "while" }
-            TOKEN_ERROR => { "error" }
+            TOKEN_ERROR(m) => { m.as_str() }
             TOKEN_EOF => { "eof" }
         }
     }
@@ -131,20 +132,21 @@ impl<'a> Scanner<'_> {
     pub fn scan_token(&mut self) -> Token {
         self.skip_whitespace();
 
-        // current considered character
-        let c = self.advance();
-
         // return true after scanning all tokens
         if self.is_at_end() {
             return self.make_token(TOKEN_EOF);
         }
 
+        // current considered character
+        let c = self.advance();
+
         // multi character lexemes, must be converted to &str
         if is_alpha(&c) {
-            return self.tokenize_string();
+            return self.tokenize_string(c);
         }
         if is_digit(&c) {
-            return self.tokenize_number();
+            let token = self.tokenize_number(c);
+            return token;
         }
 
         match c {
@@ -194,7 +196,7 @@ impl<'a> Scanner<'_> {
                 }
             }
             '"' => {
-                return self.tokenize_string();
+                return self.tokenize_string('c');
             }
             _ => {}
         }
@@ -203,19 +205,10 @@ impl<'a> Scanner<'_> {
 
     fn make_token(&self, kind: TokenKind) -> Token {
         return Token::new(kind.clone(), self.line);
-        // return match kind {
-        //     // TOKEN_STRING(literal) | TOKEN_NUMBER(literal) => {
-        //     //     Token::new(kind.clone(), self.line, Some(literal))
-        //     // }
-        //     // _ => {
-        //     //     // the character of the token can be inferred from it's kind
-        //     //     Token::new(kind.clone(), self.line, None)
-        //     // }
-        // };
     }
 
     fn error_token(&self, message: &'a str) -> Token {
-        return Token::new(TOKEN_ERROR, self.line);
+        return Token::new(TOKEN_ERROR(message.to_string()), self.line);
     }
 
     /// Checks the Char iterator for a next character. If no other charters exist, the scanner has reached the end.
@@ -264,7 +257,6 @@ impl<'a> Scanner<'_> {
         }
     }
 
-    //todo: debug
     fn skip_whitespace(&mut self) {
         loop {
             if let Some(c) = self.peek() {
@@ -295,8 +287,10 @@ impl<'a> Scanner<'_> {
         }
     }
 
-    fn tokenize_string(&mut self) -> Token {
+    fn tokenize_string(&mut self, literal_start: char) -> Token {
         let mut literal = String::new();
+        literal.push(literal_start);
+
         while self.peek() != Some('"') && !self.is_at_end() {
             if self.peek() == Some('\n') {
                 // increment line for debugging
@@ -316,8 +310,9 @@ impl<'a> Scanner<'_> {
         return self.make_token(TOKEN_STRING(literal));
     }
 
-    fn tokenize_number(&mut self) -> Token {
+    fn tokenize_number(&mut self, literal_start: char) -> Token {
         let mut integer_literal: Vec<char> = vec!();
+        integer_literal.push(literal_start);
 
         let mut consume_numbers = |scanner: &mut Scanner, iter: &mut Vec<char>| {
             while !scanner.is_at_end() && is_digit(&scanner.peek().unwrap()) {
@@ -339,11 +334,10 @@ impl<'a> Scanner<'_> {
             }
         }
 
-        let string_number: String = {
-            let mut result: String = String::new();
-            integer_literal.iter().map(|x| { result.push(*x) });
-            result
-        };
+        let mut string_number = String::new();
+        for c in integer_literal {
+            string_number.push(c);
+        }
 
         return self.make_token(TOKEN_NUMBER(string_number));
     }
@@ -420,18 +414,5 @@ impl<'a> From<&'a String> for Scanner<'a> {
             source,
             line: 0,
         }
-    }
-}
-
-// tests
-mod tests {
-    use crate::scanner::Scanner;
-
-    #[test]
-    fn init() {
-        let source = String::from("42 is the answer to life");
-        let mut scanner = Scanner::from(&source);
-        let token = scanner.scan_token();
-        dbg!(token);
     }
 }
