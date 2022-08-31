@@ -1,4 +1,3 @@
-use std::ops::Neg;
 use crate::{Chunk, disassemble_chunk};
 use crate::op_code::OpCode;
 use crate::op_code::OpCode::*;
@@ -6,15 +5,14 @@ use crate::scanner::{Scanner, Token};
 use crate::scanner::TokenKind::TOKEN_EOF;
 use crate::vm::InterpretResult::{INTERPRET_CONTINUE, INTERPRET_OK};
 use crate::stack::Stack;
-use crate::value::Value;
 
 pub const DEBUG_TRACE_EXECUTION: bool = false;
 
 pub struct VM<'a> {
     pub chunk: Option<&'a Chunk>,
-    pub ip: u8,
     // instruction pointer, points to the next byte of code to be used
-    pub stack: Stack<Value>,
+    pub ip: u8,
+    pub stack: Stack<f32>,
 }
 
 #[derive(PartialEq)]
@@ -63,13 +61,13 @@ impl VM<'_> {
     //Q: what happens when there are multiple chunks?
     pub fn run(&mut self) -> InterpretResult {
         let binary_operator = |vm: &mut VM, op: char| {
-            let b: f32 = vm.stack.pop().unwrap().value;
-            let a: f32 = vm.stack.pop().unwrap().value;
+            let b: f32 = vm.stack.pop().unwrap();
+            let a: f32 = vm.stack.pop().unwrap();
             match op {
-                '+' => { vm.stack.push(Value::from(a + b)) }
-                '-' => { vm.stack.push(Value::from(a - b)) }
-                '/' => { vm.stack.push(Value::from(a / b)) }
-                '*' => { vm.stack.push(Value::from(a * b)) }
+                '+' => { vm.stack.push(a + b) }
+                '-' => { vm.stack.push(a - b) }
+                '/' => { vm.stack.push(a / b) }
+                '*' => { vm.stack.push(a * b) }
                 _ => { println!("invalid operation {}", op) }
             }
         };
@@ -78,8 +76,8 @@ impl VM<'_> {
             // if debug flag enabled, print each instruction before execution
             if DEBUG_TRACE_EXECUTION {
                 println!("           ");
-                for slot in self.stack.stack.iter() {
-                    println!("[{}]", slot.value);
+                for val in self.stack.stack.iter() {
+                    println!("[{}]", val);
                 }
                 disassemble_chunk(self.chunk.unwrap(), "chunk")
             }
@@ -87,15 +85,13 @@ impl VM<'_> {
             let instruction = self.read_byte();
             let result = match instruction {
                 OP_CONSTANT(c) => {
-                    // couldo: not push another Value struct (one already exists on the chunk)
-                    self.stack.push(Value { value: *c });
+                    self.stack.push(*c);
                     INTERPRET_CONTINUE
                 }
                 OP_NEGATE => {
-                    let mut pop_val = self.stack.pop().unwrap().value;
-                    let neg_val = -pop_val; // negated value is the opposite of the popped val
+                    let mut pop_val = self.stack.pop().unwrap();
                     self.stack.push(
-                        Value { value: neg_val }
+                        pop_val * -1.
                     );
                     INTERPRET_CONTINUE //is this right?
                 }

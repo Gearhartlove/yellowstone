@@ -8,15 +8,13 @@ use std::fs;
 use crate::chunk::Chunk;
 use crate::debug::disassemble_chunk;
 use crate::InterpretResult::{INTERPRET_COMPILE_ERROR, INTERPRET_RUNTIME_ERROR};
-use crate::op_code::OpCode::*;
+use crate::op_code::OpCode;
 use crate::stack::Stack;
 use crate::vm::{InterpretResult, VM};
 
 mod chunk;
 mod common;
-mod memory;
 mod debug;
-mod value;
 mod op_code;
 mod vm;
 mod stack;
@@ -25,22 +23,28 @@ mod util;
 
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let chunk = Chunk::default()
+        .write_chunk(OpCode::OP_CONSTANT(0.), 0)
+        .write_chunk(OpCode::OP_CONSTANT(3.14), 1)
+        .write_chunk(OpCode::OP_RETURN, 1);
+    disassemble_chunk(&chunk, "DEBUG CHUNK");
 
-    let mut vm: VM = VM {
-        chunk: None,
-        ip: 0,
-        stack: Stack::default()
-    };
-
-    if args.len() == 1 {
-        repl(&mut vm);
-    } else if args.len() == 2 {
-        run_file(args.get(1).unwrap(), &mut vm)
-    } else {
-        eprint!("Usage: clox [path]\n");
-        exit(64);
-    }
+    // let args: Vec<String> = env::args().collect();
+    //
+    // let mut vm: VM = VM {
+    //     chunk: None,
+    //     ip: 0,
+    //     stack: Stack::default()
+    // };
+    //
+    // if args.len() == 1 {
+    //     repl(&mut vm);
+    // } else if args.len() == 2 {
+    //     run_file(args.get(1).unwrap(), &mut vm)
+    // } else {
+    //     eprint!("Usage: clox [path]\n");
+    //     exit(64);
+    // }
 }
 
 fn run_file(path: &str, vm: &mut VM) {

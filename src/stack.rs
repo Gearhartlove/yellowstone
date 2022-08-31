@@ -1,5 +1,6 @@
 use std::fmt::{Debug, Formatter};
 
+#[derive(Default)]
 pub struct Stack<T> {
     pub stack: Vec<T>,
 }
@@ -23,13 +24,5 @@ impl<T> Stack<T> {
 
     pub fn reset(&mut self) {
         self.stack.clear();
-    }
-}
-
-impl<T> Default for Stack<T> {
-    fn default() -> Self {
-        Stack {
-            stack: Vec::<T>::new(),
-        }
     }
 }
