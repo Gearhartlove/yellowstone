@@ -7,11 +7,8 @@ pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
     println!("== {} ==", name);
 
     let mut offset: u32 = 0;
-    let mut instruction_number: usize = 0;
     for instruction in chunk.code.iter() {
-        let line = get_line(instruction_number, &chunk.lines);
-        disassemble_instruction(instruction, &mut offset, line);
-        instruction_number += 1;
+        disassemble_instruction(instruction, &mut offset, &chunk.lines);
     }
 }
 
@@ -32,12 +29,13 @@ fn constant_instruction(instruction: &OpCode, offset: &mut u32) {
     }
 }
 
-fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, line: String) {
+fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &String) {
     print!("{:04}", offset);
+    let line = get_line(offset, &lines);
     if line == "same".to_string() {
         print!("   | ");
     } else {
-        print!("{:4} ", line);
+        print!("{:>4}  ", line);
     }
 
     match instruction {

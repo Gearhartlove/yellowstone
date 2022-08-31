@@ -34,7 +34,9 @@ impl Chunk {
     }
 }
 
-/// Each number represents a line
+/// Each line number is separated by a '\_', the numbers in between the '\_' are the number of
+/// operations on that line.
+/// Look at tests for example.
 fn encode(chunk: &mut Chunk, curr_line: usize) {
     // determine if I am on a new line by comparing the length of the lines with the current line number
     let line_count = chunk.lines.chars().filter(|x| x == &'_').map(|x| x).collect::<Vec<char>>().len();
@@ -72,22 +74,36 @@ fn encode(chunk: &mut Chunk, curr_line: usize) {
 }
 
 
-pub fn get_line(instr_num: usize, lines: &String) -> String {
-    if instr_num > 0 {
-        let before_instr_num = instr_num - 1;
-        let split = lines.split('_');
-        let mut line_number = 1;
-        let mut sum = 0;
-        for num in split {
-            let num = num.parse::<usize>().unwrap();
-            sum += num;
-            if instr_num <= sum {
-                return line_number.to_string();
-            }
-            line_number += 1;
-        }
+// todo: calculate the line number of the offset before for comparison
+pub fn get_line(offset: &mut u32, lines: &String) -> String {
+    if *offset == 0 {
+        return "1".to_string();
     }
-    return "1".to_string();
+
+    let line_numb = |offset: &mut u32| -> String {
+        let mut split = lines.split('_').collect::<Vec<&str>>();
+        split.pop(); // remove ending ""
+        let split = split.into_iter().map(|x| x.parse::<u32>().unwrap()).collect::<Vec<u32>>();
+        let split_len = split.len();
+        let mut sum: u32 = 0;
+        let mut line_numb = 0;
+        for num in split {
+            line_numb += 1;
+            sum += num;
+            if *offset < sum {
+                return line_numb.to_string();
+            }
+        }
+        return split_len.to_string();
+    };
+
+    let before = line_numb(&mut (*offset - 1));
+    let current = line_numb(offset);
+
+    return match before == current {
+        true => { "same".to_string() }
+        false => { current }
+    };
 }
 
 // #################################################################################################
@@ -95,6 +111,7 @@ pub fn get_line(instr_num: usize, lines: &String) -> String {
 
 mod tests {
     use crate::Chunk;
+    use crate::chunk::get_line;
     use crate::op_code::OpCode;
 
     #[test]
@@ -103,10 +120,25 @@ mod tests {
             .write_chunk(OpCode::OP_CONSTANT(0.), 0)
             .write_chunk(OpCode::OP_CONSTANT(1.), 0)
             .write_chunk(OpCode::OP_CONSTANT(2.), 1)
-            .write_chunk(OpCode::OP_CONSTANT(2.), 1)
-            .write_chunk(OpCode::OP_CONSTANT(2.), 1)
-            .write_chunk(OpCode::OP_CONSTANT(2.), 1)
             .write_chunk(OpCode::OP_RETURN, 1);
-        assert_eq!("2_5_", &chunk.lines);
+        assert_eq!("2_2_", &chunk.lines);
+    }
+
+    #[test]
+    fn get_line_test() {
+        let chunk = Chunk::default()
+            .write_chunk(OpCode::OP_CONSTANT(0.), 0) // 1
+            .write_chunk(OpCode::OP_CONSTANT(1.), 0) // same
+            .write_chunk(OpCode::OP_CONSTANT(2.), 1) // 2
+            .write_chunk(OpCode::OP_CONSTANT(2.), 1) // same
+            .write_chunk(OpCode::OP_CONSTANT(2.), 1) // same
+            .write_chunk(OpCode::OP_RETURN, 2); // 3
+
+        assert_eq!("1", get_line(&mut 0, &chunk.lines));
+        assert_eq!("same", get_line(&mut 1, &chunk.lines));
+        assert_eq!("2", get_line(&mut 2, &chunk.lines));
+        assert_eq!("same", get_line(&mut 3, &chunk.lines));
+        assert_eq!("same", get_line(&mut 4, &chunk.lines));
+        assert_eq!("3", get_line(&mut 5, &chunk.lines));
     }
 }

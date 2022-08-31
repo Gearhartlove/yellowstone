@@ -26,7 +26,8 @@ fn main() {
     let chunk = Chunk::default()
         .write_chunk(OpCode::OP_CONSTANT(0.), 0)
         .write_chunk(OpCode::OP_CONSTANT(3.14), 1)
-        .write_chunk(OpCode::OP_RETURN, 1);
+        .write_chunk(OpCode::OP_CONSTANT(42.), 1)
+        .write_chunk(OpCode::OP_RETURN, 2);
     disassemble_chunk(&chunk, "DEBUG CHUNK");
 
     // let args: Vec<String> = env::args().collect();
