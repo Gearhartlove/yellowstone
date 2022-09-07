@@ -110,7 +110,7 @@ impl VM {
                 OP_NEGATE => {
                     let mut pop_val = self.stack.pop().unwrap();
                     self.stack.push(
-                        pop_val * -1.
+                        pop_val * -1. // negating
                     );
                     INTERPRET_CONTINUE //is this right?
                 }
@@ -149,10 +149,6 @@ impl VM {
                 return instruction;
             }
         }
-    }
-
-    fn reset_stack(&mut self) {
-        self.stack.reset()
     }
 
     pub fn with_chunk(mut self, chunk: Chunk) -> Self {

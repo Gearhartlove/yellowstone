@@ -19,10 +19,9 @@ fn main() {
     let mut vm = VM::default()
         .with_chunk(
             Chunk::default()
-                .write_chunk(OpCode::OP_CONSTANT(0.), 0)
-                .write_chunk(OpCode::OP_CONSTANT(3.14), 1)
-                .write_chunk(OpCode::OP_CONSTANT(42.), 1)
-                .write_chunk(OpCode::OP_RETURN, 2)
+                .write_chunk(OpCode::OP_CONSTANT(3.14), 0)
+                .write_chunk(OpCode::OP_NEGATE, 0)
+                .write_chunk(OpCode::OP_RETURN, 0)
         );
     disassemble_chunk(&vm.chunk, "DEBUG CHUNK");
     vm.interpret();
