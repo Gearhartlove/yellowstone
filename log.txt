@@ -1,0 +1,3 @@
+6/9/22
+> can't dereference a raw pointer in rust, best to stay away from them and use vec and other 'rust friendly' types
+>

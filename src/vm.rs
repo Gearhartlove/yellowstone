@@ -18,7 +18,8 @@ const STACK_MAX: usize = 256;
 #[derive(Default)]
 pub struct VM {
     pub chunk: Chunk,
-    pub ip: usize, // instruction pointer, points at bytecode about to be executed
+    pub ip: usize,
+    // instruction pointer, points at bytecode about to be executed
     pub stack: Vec<f32>,
 }
 
@@ -69,18 +70,6 @@ impl VM {
 
     //Q: what happens when there are multiple chunks?
     pub fn run(&mut self) -> InterpretResult {
-        let binary_operator = |vm: &mut VM, op: char| {
-            let b: f32 = vm.stack.pop().unwrap();
-            let a: f32 = vm.stack.pop().unwrap();
-            match op {
-                '+' => { vm.stack.push(a + b) }
-                '-' => { vm.stack.push(a - b) }
-                '/' => { vm.stack.push(a / b) }
-                '*' => { vm.stack.push(a * b) }
-                _ => { println!("invalid operation {}", op) }
-            }
-        };
-
         loop {
             // if debug flag enabled, print each instruction before execution
             if VM::DEBUG_EXECUTION_TRACING {
@@ -143,7 +132,7 @@ impl VM {
     fn read_byte(&mut self) -> &OpCode {
         let instruction = self.chunk.code.get(self.ip);
         match instruction {
-            None => {unimplemented!()}
+            None => { unimplemented!() }
             Some(instruction) => {
                 self.ip += 1;
                 return instruction;
@@ -154,5 +143,17 @@ impl VM {
     pub fn with_chunk(mut self, chunk: Chunk) -> Self {
         self.chunk = chunk;
         return self;
+    }
+}
+
+fn binary_operator(vm: &mut VM, op: char) {
+    let b: f32 = vm.stack.pop().unwrap();
+    let a: f32 = vm.stack.pop().unwrap();
+    match op {
+        '+' => { vm.stack.push(a + b) }
+        '-' => { vm.stack.push(a - b) }
+        '/' => { vm.stack.push(a / b) }
+        '*' => { vm.stack.push(a * b) }
+        _ => { println!("invalid operation {}", op) }
     }
 }
