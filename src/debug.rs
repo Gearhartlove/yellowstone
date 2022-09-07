@@ -35,7 +35,7 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
     if line == "same".to_string() {
         print!("   | ");
     } else {
-        print!("{:>4}  ", line);
+        print!("{:>4} ", line);
     }
 
     match instruction {

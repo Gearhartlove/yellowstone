@@ -4,16 +4,6 @@ use crate::op_code::OpCode::*;
 use crate::scanner::{Scanner, Token};
 use crate::scanner::TokenKind::TOKEN_EOF;
 use crate::vm::InterpretResult::{INTERPRET_CONTINUE, INTERPRET_OK};
-use crate::stack::Stack;
-
-pub const DEBUG_TRACE_EXECUTION: bool = false;
-
-pub struct VM<'a> {
-    pub chunk: Option<&'a Chunk>,
-    // instruction pointer, points to the next byte of code to be used
-    pub ip: u8,
-    pub stack: Stack<f32>,
-}
 
 #[derive(PartialEq)]
 pub enum InterpretResult {
@@ -23,10 +13,29 @@ pub enum InterpretResult {
     INTERPRET_RUNTIME_ERROR,
 }
 
-impl VM<'_> {
-    pub fn interpret(&mut self, source: &String) -> InterpretResult {
-        self.compile(&source);
+const STACK_MAX: usize = 256;
+
+#[derive(Default)]
+pub struct VM {
+    pub chunk: Chunk,
+    pub ip: usize, // instruction pointer, points at bytecode about to be executed
+    pub stack: Vec<f32>,
+}
+
+impl VM {
+    pub const DEBUG_EXECUTION_TRACING: bool = false;
+
+    pub fn interpret(&mut self) -> InterpretResult {
+        return self.run();
+        //self.compile(&source);
         return INTERPRET_OK;
+    }
+
+    fn push(&mut self, value: f32) {
+        self.stack.push(value);
+    }
+    fn pop(&mut self) -> f32 {
+        self.stack.pop().unwrap()
     }
 
     pub fn compile(&mut self, source: &String) {
@@ -74,18 +83,28 @@ impl VM<'_> {
 
         loop {
             // if debug flag enabled, print each instruction before execution
-            if DEBUG_TRACE_EXECUTION {
+            if VM::DEBUG_EXECUTION_TRACING {
                 println!("           ");
-                for val in self.stack.stack.iter() {
+                for val in self.stack.iter() {
                     println!("[{}]", val);
                 }
-                disassemble_chunk(self.chunk.unwrap(), "chunk")
+                disassemble_chunk(&self.chunk, "chunk")
             }
 
             let instruction = self.read_byte();
             let result = match instruction {
+                OP_RETURN => {
+                    if let Some(v) = self.stack.pop() {
+                        println!("{}", v);
+                    } else {
+                        println!("Stack is empty, nothing to pop")
+                    }
+                    INTERPRET_OK
+                }
                 OP_CONSTANT(c) => {
-                    self.stack.push(*c);
+                    // println!("{c}");
+                    let c = c.clone();
+                    self.stack.push(c);
                     INTERPRET_CONTINUE
                 }
                 OP_NEGATE => {
@@ -94,14 +113,6 @@ impl VM<'_> {
                         pop_val * -1.
                     );
                     INTERPRET_CONTINUE //is this right?
-                }
-                OP_RETURN => {
-                    if let Some(v) = self.stack.pop() {
-                        println!("{}", v);
-                    } else {
-                        println!("Stack is empty, nothing to pop")
-                    }
-                    INTERPRET_OK
                 }
                 OP_ADD => {
                     binary_operator(self, '+');
@@ -122,23 +133,30 @@ impl VM<'_> {
                 OP_CONSTANT_LONG(_) => { unimplemented!() }
                 OP_DEBUG => { unimplemented!() }
             };
-            self.increment_ip();
+
             if result == INTERPRET_OK {
                 return result;
             }
         }
     }
 
-    fn increment_ip(&mut self) {
-        self.ip += 1;
-    }
-
-    fn read_byte(&self) -> &OpCode {
-        let byte = self.chunk.unwrap().code.get(self.ip as usize).unwrap();
-        return byte;
+    fn read_byte(&mut self) -> &OpCode {
+        let instruction = self.chunk.code.get(self.ip);
+        match instruction {
+            None => {unimplemented!()}
+            Some(instruction) => {
+                self.ip += 1;
+                return instruction;
+            }
+        }
     }
 
     fn reset_stack(&mut self) {
         self.stack.reset()
+    }
+
+    pub fn with_chunk(mut self, chunk: Chunk) -> Self {
+        self.chunk = chunk;
+        return self;
     }
 }

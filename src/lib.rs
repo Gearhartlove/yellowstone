@@ -12,5 +12,4 @@ pub mod common;
 pub mod debug;
 pub mod op_code;
 pub mod vm;
-pub mod stack;
 pub mod util;
