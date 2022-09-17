@@ -1,3 +1,4 @@
+#[allow(non_camel_case_types)]
 #[derive(Debug)]
 pub enum OpCode {
     OP_CONSTANT(f32),

@@ -1,10 +1,11 @@
 // Design Decision: Scan token only when the compiler needs a token
 
-use std::fmt::{Display, Formatter};
-use std::thread::current;
 use crate::scanner::TokenKind::*;
 use crate::util::*;
+use std::fmt::{Display, Formatter};
+use std::collections::{HashMap};
 
+#[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq)]
 pub enum TokenKind {
     // Single-character tokens.
@@ -60,44 +61,56 @@ impl Display for TokenKind {
     }
 }
 
-pub struct Token {
+pub struct Token<'a> {
     pub kind: TokenKind,
-    pub start: *const u8,
-    pub length: usize,
+    pub slice: &'a str,
     pub line: u8,
 }
 
-impl Token {
-    pub fn new(kind: TokenKind, start: *const u8, length: usize, line: u8) -> Self {
-        Token {
-            kind,
-            start,
-            length,
-            line,
-        }
+impl<'a> Token<'a> {
+    pub fn new(kind: TokenKind, slice: &'a str, line: u8) -> Self {
+        Token { kind, slice, line }
     }
-
 }
 
-pub struct Scanner {
-    pub start: *const u8,
-    pub current: isize,
+pub struct Scanner<'a> {
+    pub source: &'a String,
+    pub start: usize,
+    pub current: usize,
     source_length: usize,
     line: u8,
 }
 
-impl Scanner {
+impl<'a> Scanner<'a> {
+    pub fn new(source: &'a String) -> Self {
+        Self {
+            source,
+            current: 0,
+            start: 0,
+            source_length: source.len(),
+            line: 1,
+        }
+    }
+
+    fn start(&self) -> &'a str {
+        &self.source[self.start..self.start + 1]
+    }
+
+    fn current(&self) -> &'a str {
+        &self.source[self.current..self.current + 1]
+    }
+
     pub fn scan_token(&mut self) -> Token {
         self.skip_whitespace();
 
-        self.start = self.advance();
+        self.advance();
+        self.start = self.current;
 
         if self.is_at_end() {
             return self.make_token(TOKEN_EOF);
         }
 
-        let c = unsafe { *self.current_byte() as char };
-        eprint!("{}", c); // debug
+        let c = self.start();
 
         if is_alpha(c) {
             return self.tokenize_string();
@@ -108,154 +121,142 @@ impl Scanner {
 
         match c {
             // single character
-            '(' => return self.make_token(TOKEN_LEFT_PAREN),
-            ')' => return self.make_token(TOKEN_RIGHT_PAREN),
-            '{' => return self.make_token(TOKEN_LEFT_BRACE),
-            '}' => return self.make_token(TOKEN_RIGHT_BRACE),
-            ';' => return self.make_token(TOKEN_SEMICOLON),
-            ',' => return self.make_token(TOKEN_COMMA),
-            '.' => return self.make_token(TOKEN_DOT),
-            '-' => return self.make_token(TOKEN_MINUS),
-            '+' => return self.make_token(TOKEN_PLUS),
-            '/' => return self.make_token(TOKEN_SLASH),
-            '*' => return self.make_token(TOKEN_STAR),
+            "(" => return self.make_token(TOKEN_LEFT_PAREN),
+            ")" => return self.make_token(TOKEN_RIGHT_PAREN),
+            "{" => return self.make_token(TOKEN_LEFT_BRACE),
+            "}" => return self.make_token(TOKEN_RIGHT_BRACE),
+            ";" => return self.make_token(TOKEN_SEMICOLON),
+            "," => return self.make_token(TOKEN_COMMA),
+            "." => return self.make_token(TOKEN_DOT),
+            "-" => return self.make_token(TOKEN_MINUS),
+            "+" => return self.make_token(TOKEN_PLUS),
+            "/" => return self.make_token(TOKEN_SLASH),
+            "*" => return self.make_token(TOKEN_STAR),
             // optional two character
-            '!' => {
-                if self.expect('=') {
+            "!" => {
+                if self.expect("=") {
                     self.advance();
                     return self.make_token(TOKEN_BANG_EQUAL);
                 } else {
                     return self.make_token(TOKEN_BANG);
                 }
             }
-            '=' => {
-                if self.expect('=') {
+            "=" => {
+                if self.expect("=") {
                     self.advance();
                     return self.make_token(TOKEN_EQUAL_EQUAL);
                 } else {
                     return self.make_token(TOKEN_EQUAL);
                 }
             }
-            '<' => {
-                if self.expect('=') {
+            "<" => {
+                if self.expect("=") {
                     self.advance();
                     return self.make_token(TOKEN_LESS_EQUAL);
                 } else {
                     return self.make_token(TOKEN_LESS);
                 }
             }
-            '>' => {
-                if self.expect('=') {
+            ">" => {
+                if self.expect("=") {
                     self.advance();
                     return self.make_token(TOKEN_GREATER_EQUAL);
                 } else {
                     return self.make_token(TOKEN_GREATER);
                 }
             }
-            '"' => {
+            "\"" => {
                 return self.tokenize_string();
             }
             _ => {}
         }
-        //todo: evaluate syntax
-        return self.error_token("Unexpected character.");
+        self.error_token("Unexpected character.")
     }
 
     fn make_token(&self, kind: TokenKind) -> Token {
-        let current_byte = self.current_byte();
-        //number of bytes between both memory locations
-        let length = bytes_between(current_byte, self.start) as usize;
-
-        let start = self.start;
         let line = self.line;
-        let token = Token::new(kind, start, length, line);
-        return token;
+        let slice = &self.source[self.start..self.current];
+        Token::new(kind, slice, line)
     }
 
-    fn error_token(&self, message: &str) -> Token {
+    fn error_token(&self, message: &'a str) -> Token {
         let kind = TOKEN_ERROR;
-        let start = message.as_bytes().first().unwrap();
-        let length = message.len();
         let line = self.line;
-        let token = Token::new(kind, start, length, line);
-        return token;
+        Token::new(kind, message, line)
     }
 
     // debug: check for off by one
     pub fn is_at_end(&self) -> bool {
-        return self.current >= self.source_length.try_into().unwrap();
+        self.current >= self.source_length
     }
 
-    fn advance(&mut self) -> *const u8 {
-        unsafe {
-            self.current += 1; // advancing the pointer
-            return self.start.add(self.current as usize);
+    fn advance(&mut self) {
+        self.current += 1;
+    }
+
+    // TODO: test peek function
+    fn peek(&self) -> Option<&'a str> {
+        if self.current + 1 < self.source_length {
+            return Some(&self.source[self.current + 1..self.current + 2]);
         }
+        None
     }
 
-    fn peek(&self) -> char {
-        unsafe {
-            let mut offset = self.current;
-            offset += 1; // peeking at the next value
-            return *self.start.add(offset as usize) as char;
-        }
-    }
-
-    fn peek_next(&self) -> Option<char> {
+    // TODO: test peek_next function
+    fn peek_next(&self) -> Option<&'a str> {
         if self.is_at_end() {
             return None;
         }
-        unsafe {
-            return Some(*self.start.add(self.current as usize + 1) as char);
-        }
+        Some(&self.source[self.current + 2..self.current + 3])
     }
 
-    fn expect(&self, expected: char) -> bool {
-        if self.is_at_end() {
-            return false;
-        }
-        unsafe {
-            if self.peek() != expected {
+    fn expect(&self, expected: &'a str) -> bool {
+        if let Some(peek) = self.peek() {
+            if peek != expected {
                 return false;
             }
         }
-        return true;
+        true
     }
 
-    //todo: debug
+    // TODO: test skip_whitespace function
     fn skip_whitespace(&mut self) {
         loop {
-            let c = self.peek();
-            match c {
-                ' ' | '\r' | '\t' => {
-                    self.advance();
-                    break;
-                    ;
-                }
-                '\n' => {
-                    self.line += 1;
-                    self.advance();
-                    return;
-                    ;
-                }
-                '/' => {
-                    if self.expect('/') {
-                        while self.peek() != '\n' && !self.is_at_end() {
-                            self.advance();
-                        }
-                    } else {
+            if let Some(c) = self.peek() {
+                match c {
+                    " " | "\r" | "\t" => {
+                        self.advance();
+                        break;
+                    }
+                    "\n" => {
+                        self.line += 1;
+                        self.advance();
                         return;
                     }
-                    break;
+                    "/" => {
+                        if self.expect("/") {
+                            while let Some(peek) = self.peek() {
+                                if peek == "\n" { break };
+                                self.advance();
+                            }
+                        } else {
+                            return;
+                        }
+                        break;
+                    }
+                    _ => return,
                 }
-                _ => break,
             }
         }
     }
 
+    // TODO: test tokenize_string function
     fn tokenize_string(&mut self) -> Token {
-        while self.peek() != '"' && !self.is_at_end() {
-            if self.peek() == '\n' {
+        while let Some(c) = self.peek() {
+            if c == "\"" {
+                break;
+            }
+            if c == "\n" {
                 self.line += 1;
             }
             self.advance();
@@ -270,105 +271,117 @@ impl Scanner {
         return self.make_token(TOKEN_STRING);
     }
 
+    //TODO: test tokenize_number function
     fn tokenize_number(&mut self) -> Token {
-        while is_digit(self.peek()) {
+        // keep consuming numbers
+        while let Some(peek) = self.peek() {
+            if !is_digit(peek) {
+                break;
+            }
             self.advance();
         }
 
         // Look for a fractional part
-        if let Some(peek_next) = self.peek_next() {
-            if self.peek() == '.' && is_digit(peek_next) {
-                // Consume the "."
-                self.advance();
-
-                while is_digit(self.peek()) {
+        if let Some(peek) = self.peek() {
+            if let Some(peek_next) = self.peek_next() {
+                if peek == "." && is_digit(peek_next) {
                     self.advance();
+
+                    // keep consuming numbers
+                    while let Some(peek) = self.peek() {
+                        if !is_digit(peek) {
+                            break;
+                        }
+                        self.advance();
+                    }
                 }
             }
         }
         return self.make_token(TOKEN_NUMBER);
     }
 
+    // TODO: test tokenize_identifier function
     fn tokenize_identifier(&mut self) -> Token {
-        while is_alpha(self.peek()) || is_digit(self.peek()) {
+        let peek = self.peek().unwrap();
+        while is_alpha(peek) || is_digit(peek) {
             self.advance();
         }
-        return self.make_token(self.identifier_type());
+        self.make_token(self.identifier_type())
     }
 
     fn identifier_type(&self) -> TokenKind {
-        let c = unsafe { *self.start as char };
-        match c as char {
-            'a' => return self.check_keyword(1, 2, "nd", TOKEN_AND),
-            'c' => return self.check_keyword(1, 4, "lass", TOKEN_CLASS),
-            'e' => return self.check_keyword(1, 3, "lse", TOKEN_ELSE),
-            'f' => {
-                let current_byte = self.current_byte();
-                if bytes_between(current_byte, self.start) > 1 {
-                    match self.peek() {
-                        'a' => return self.check_keyword(2, 3, "lse", TOKEN_FALSE),
-                        'o' => return self.check_keyword(2, 1, "r", TOKEN_FOR),
-                        'u' => return self.check_keyword(2, 1, "n", TOKEN_FUN),
+        let c = self.current();
+
+        match c {
+            "a" => return self.check_keyword(1, 2, "nd", TOKEN_AND),
+            "c" => return self.check_keyword(1, 4, "lass", TOKEN_CLASS),
+            "e" => return self.check_keyword(1, 3, "lse", TOKEN_ELSE),
+            "f" => {
+                if self.current - self.start > 1 {
+                    match self.peek().unwrap() {
+                        "a" => return self.check_keyword(2, 3, "lse", TOKEN_FALSE),
+                        "o" => return self.check_keyword(2, 1, "r", TOKEN_FOR),
+                        "u" => return self.check_keyword(2, 1, "n", TOKEN_FUN),
                         _ => {}
                     }
                 }
             }
-            'i' => return self.check_keyword(1, 1, "f", TOKEN_IF),
-            'n' => return self.check_keyword(1, 2, "il", TOKEN_NIL),
-            'o' => return self.check_keyword(1, 1, "or", TOKEN_OR),
-            'p' => return self.check_keyword(1, 4, "rint", TOKEN_PRINT),
-            'r' => return self.check_keyword(1, 5, "eturn", TOKEN_RETURN),
-            's' => return self.check_keyword(1, 4, "uper", TOKEN_SUPER),
-            't' => {
-                let current_byte = self.current_byte();
-                if bytes_between(current_byte, self.start) > 1 {
-                    match self.peek() {
-                        'h' => return self.check_keyword(2, 2, "is", TOKEN_THIS),
-                        'r' => return self.check_keyword(2, 2, "ue", TOKEN_TRUE),
+            "i" => return self.check_keyword(1, 1, "f", TOKEN_IF),
+            "n" => return self.check_keyword(1, 2, "il", TOKEN_NIL),
+            "o" => return self.check_keyword(1, 1, "or", TOKEN_OR),
+            "p" => return self.check_keyword(1, 4, "rint", TOKEN_PRINT),
+            "r" => return self.check_keyword(1, 5, "eturn", TOKEN_RETURN),
+            "s" => return self.check_keyword(1, 4, "uper", TOKEN_SUPER),
+            "t" => {
+                if self.current - self.start > 1 {
+                    match self.peek().unwrap() {
+                        "h" => return self.check_keyword(2, 2, "is", TOKEN_THIS),
+                        "r" => return self.check_keyword(2, 2, "ue", TOKEN_TRUE),
                         _ => {}
                     }
                 }
             }
-            'v' => return self.check_keyword(1, 2, "ar", TOKEN_VAR),
-            'w' => return self.check_keyword(1, 4, "hile", TOKEN_WHILE),
+            "v" => return self.check_keyword(1, 2, "ar", TOKEN_VAR),
+            "w" => return self.check_keyword(1, 4, "hile", TOKEN_WHILE),
             _ => {}
         }
-        return TOKEN_IDENTIFIER;
+
+        TOKEN_IDENTIFIER
     }
 
-    fn check_keyword(&self, start: u8, length: u8, rest: &str, kind: TokenKind) -> TokenKind {
-        let keyword_start = unsafe {
-            new_inc_ptr(self.start, start as usize)
-        };
-
-        let current_byte = self.current_byte();
-        if bytes_between(current_byte, self.start) == (start + length) as i64
-            && memcmp_equal(keyword_start, rest, length as usize) {
-            return kind;
-        } else {
-            return TOKEN_IDENTIFIER;
-        }
+    // TODO: test check_keyword function
+    fn check_keyword(&self, start: usize, end: usize, the_rest: &str, kind: TokenKind) -> TokenKind {
+        if self.current - self.start == start + end
+        && the_rest == &self.source[self.start + start..self.start + end] {
+            return kind
+        } 
+        TOKEN_IDENTIFIER
     }
 
-    fn current_byte(&self) -> *const u8 {
-        let current_byte = unsafe {
-            self.start.add(self.current as usize)
-        };
-        return current_byte;
-    }
+    //fn check_keyword(&self, start: u8, length: u8, rest: &str, kind: TokenKind) -> TokenKind {
+    //    let keyword_start = unsafe {
+    //        new_inc_ptr(self.start, start as usize)
+    //    };
+
+    //    let current_byte = self.current_byte();
+    //    if bytes_between(current_byte, self.start) == (start + length) as i64
+    //        && memcmp_equal(keyword_start, rest, length as usize) {
+    //        return kind;
+    //    } else {
+    //        return TOKEN_IDENTIFIER;
+    //    }
+    //}
 }
 
-impl From<&String> for Scanner {
-    fn from(source: &String) -> Self {
-        let bytes = source.as_bytes();
-        let start = bytes.first().unwrap();
-        let current = -1;
+impl<'a> From<&'a String> for Scanner<'a> {
+    fn from(source: &'a String) -> Self {
         let source_length = source.len(); // necessary to tell to insert EOF token
         Scanner {
-            start,
-            current,
+            source,
+            start: 0,
+            current: 0,
             line: 1,
-            source_length,
+            source_length: source.len(),
         }
     }
 }

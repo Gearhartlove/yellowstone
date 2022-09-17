@@ -1,3 +1,7 @@
 6/9/22
 > can't dereference a raw pointer in rust, best to stay away from them and use vec and other 'rust friendly' types
->
+16/9/22
+> starting real work on the scanner, working on getting the 'print 1 + 2'
+statement to scan all of the tokens in. This is done through th 'scan_token' method apart of the scanner.
+> TODO: need to test the peek and peek_next function
+

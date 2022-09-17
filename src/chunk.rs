@@ -1,4 +1,3 @@
-use std::convert::Infallible;
 use crate::op_code::OpCode;
 
 pub struct Chunk {
@@ -39,7 +38,13 @@ impl Chunk {
 /// Look at tests for example.
 fn encode(chunk: &mut Chunk, curr_line: usize) {
     // determine if I am on a new line by comparing the length of the lines with the current line number
-    let line_count = chunk.lines.chars().filter(|x| x == &'_').map(|x| x).collect::<Vec<char>>().len();
+    let line_count = chunk
+        .lines
+        .chars()
+        .filter(|x| x == &'_')
+        .map(|x| x)
+        .collect::<Vec<char>>()
+        .len();
     let same_line: bool = line_count == curr_line;
     if !same_line {
         // pop leading '_'
@@ -73,7 +78,6 @@ fn encode(chunk: &mut Chunk, curr_line: usize) {
     }
 }
 
-
 // todo: calculate the line number of the offset before for comparison
 pub fn get_line(offset: &mut u32, lines: &String) -> String {
     if *offset == 0 {
@@ -83,7 +87,10 @@ pub fn get_line(offset: &mut u32, lines: &String) -> String {
     let line_numb = |offset: &mut u32| -> String {
         let mut split = lines.split('_').collect::<Vec<&str>>();
         split.pop(); // remove ending ""
-        let split = split.into_iter().map(|x| x.parse::<u32>().unwrap()).collect::<Vec<u32>>();
+        let split = split
+            .into_iter()
+            .map(|x| x.parse::<u32>().unwrap())
+            .collect::<Vec<u32>>();
         let split_len = split.len();
         let mut sum: u32 = 0;
         let mut line_numb = 0;
@@ -101,18 +108,19 @@ pub fn get_line(offset: &mut u32, lines: &String) -> String {
     let current = line_numb(offset);
 
     return match before == current {
-        true => { "same".to_string() }
-        false => { current }
+        true => "same".to_string(),
+        false => current,
     };
 }
 
 // #################################################################################################
 // Testing
 
+#[allow(unused_imports)]
 mod tests {
-    use crate::Chunk;
     use crate::chunk::get_line;
     use crate::op_code::OpCode;
+    use crate::Chunk;
 
     #[test]
     fn encode_test() {

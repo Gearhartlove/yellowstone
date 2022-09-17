@@ -1,10 +1,10 @@
-use crate::{Chunk, disassemble_chunk};
 use crate::op_code::OpCode;
 use crate::op_code::OpCode::*;
+use crate::scanner::TokenKind::*;
 use crate::scanner::{Scanner, Token};
-use crate::scanner::TokenKind::TOKEN_EOF;
-use crate::vm::InterpretResult::{INTERPRET_CONTINUE, INTERPRET_OK};
+use crate::{disassemble_chunk, Chunk};
 
+#[allow(non_camel_case_types)]
 #[derive(PartialEq)]
 pub enum InterpretResult {
     INTERPRET_CONTINUE,
@@ -15,6 +15,7 @@ pub enum InterpretResult {
 
 const STACK_MAX: usize = 256;
 
+#[allow(non_snake_case)]
 #[derive(Default)]
 pub struct VM {
     pub chunk: Chunk,
@@ -26,10 +27,9 @@ pub struct VM {
 impl VM {
     pub const DEBUG_EXECUTION_TRACING: bool = false;
 
-    pub fn interpret(&mut self) -> InterpretResult {
-        return self.run();
-        //self.compile(&source);
-        return INTERPRET_OK;
+    pub fn interpret(&mut self, source: &String) -> Result<(), Box<dyn std::error::Error>> {
+        self.compile(source);
+        Ok(())
     }
 
     fn push(&mut self, value: f32) {
@@ -52,16 +52,7 @@ impl VM {
             }
             // todo create a print word
             print!("{:2} ", token.kind);
-            print!("'");
-            for i in 0..token.length {
-                unsafe {
-                    let c = *token.start.add(i) as char;
-                    print!("{}", c);
-                }
-            }
-            print!("'");
-            println!();
-
+            println!("{}", token.slice);
             if token.kind == TOKEN_EOF {
                 break;
             }
@@ -88,42 +79,46 @@ impl VM {
                     } else {
                         println!("Stack is empty, nothing to pop")
                     }
-                    INTERPRET_OK
+                    InterpretResult::INTERPRET_OK
                 }
                 OP_CONSTANT(c) => {
                     // println!("{c}");
                     let c = c.clone();
                     self.stack.push(c);
-                    INTERPRET_CONTINUE
+                    InterpretResult::INTERPRET_CONTINUE
                 }
                 OP_NEGATE => {
-                    let mut pop_val = self.stack.pop().unwrap();
+                    let pop_val = self.stack.pop().unwrap();
                     self.stack.push(
-                        pop_val * -1. // negating
+                        pop_val * -1., // negating
                     );
-                    INTERPRET_CONTINUE //is this right?
+                    InterpretResult::INTERPRET_CONTINUE //is this right?
                 }
                 OP_ADD => {
                     binary_operator(self, '+');
-                    INTERPRET_CONTINUE
+                    InterpretResult::INTERPRET_CONTINUE
                 }
                 OP_SUBTRACT => {
                     binary_operator(self, '-');
-                    INTERPRET_CONTINUE
+                    InterpretResult::INTERPRET_CONTINUE
                 }
                 OP_MULTIPLY => {
                     binary_operator(self, '*');
-                    INTERPRET_CONTINUE
+                    InterpretResult::INTERPRET_CONTINUE
                 }
                 OP_DIVIDE => {
                     binary_operator(self, '/');
-                    INTERPRET_CONTINUE
+                    InterpretResult::INTERPRET_CONTINUE
                 }
-                OP_CONSTANT_LONG(_) => { unimplemented!() }
-                OP_DEBUG => { unimplemented!() }
+                OP_CONSTANT_LONG(_) => {
+                    unimplemented!()
+                }
+                OP_DEBUG => {
+                    unimplemented!()
+                }
             };
 
-            if result == INTERPRET_OK {
+            if result == InterpretResult::INTERPRET_OK {
                 return result;
             }
         }
@@ -132,7 +127,9 @@ impl VM {
     fn read_byte(&mut self) -> &OpCode {
         let instruction = self.chunk.code.get(self.ip);
         match instruction {
-            None => { unimplemented!() }
+            None => {
+                unimplemented!()
+            }
             Some(instruction) => {
                 self.ip += 1;
                 return instruction;
@@ -150,10 +147,12 @@ fn binary_operator(vm: &mut VM, op: char) {
     let b: f32 = vm.stack.pop().unwrap();
     let a: f32 = vm.stack.pop().unwrap();
     match op {
-        '+' => { vm.stack.push(a + b) }
-        '-' => { vm.stack.push(a - b) }
-        '/' => { vm.stack.push(a / b) }
-        '*' => { vm.stack.push(a * b) }
-        _ => { println!("invalid operation {}", op) }
+        '+' => vm.stack.push(a + b),
+        '-' => vm.stack.push(a - b),
+        '/' => vm.stack.push(a / b),
+        '*' => vm.stack.push(a * b),
+        _ => {
+            println!("invalid operation {}", op)
+        }
     }
 }
