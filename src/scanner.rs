@@ -77,7 +77,7 @@ pub struct Scanner<'a> {
     pub source: &'a String,
     pub start: usize,
     pub current: usize,
-    source_length: usize,
+    pub source_length: usize,
     line: u8,
 }
 
@@ -190,27 +190,30 @@ impl<'a> Scanner<'a> {
         self.current >= self.source_length
     }
 
-    fn advance(&mut self) {
+    pub fn is_at_peek_next_end(&self) -> bool {
+        self.current + 1 >= self.source_length
+    }
+
+    pub fn advance(&mut self) {
         self.current += 1;
+        println!("curr: {}", self.current);
     }
 
-    // TODO: test peek function
-    fn peek(&self) -> Option<&'a str> {
-        if self.current + 1 < self.source_length {
-            return Some(&self.source[self.current + 1..self.current + 2]);
-        }
-        None
-    }
-
-    // TODO: test peek_next function
-    fn peek_next(&self) -> Option<&'a str> {
+    pub fn peek(&self) -> Option<&'a str> {
         if self.is_at_end() {
             return None;
         }
-        Some(&self.source[self.current + 2..self.current + 3])
+        Some(&self.source[self.current..self.current + 1])
     }
 
-    fn expect(&self, expected: &'a str) -> bool {
+    pub fn peek_next(&self) -> Option<&'a str> {
+        if self.is_at_peek_next_end() {
+            return None;
+        }
+        Some(&self.source[self.current + 1..self.current + 2])
+    }
+
+    pub fn expect(&self, expected: &'a str) -> bool {
         if let Some(peek) = self.peek() {
             if peek != expected {
                 return false;
@@ -219,14 +222,13 @@ impl<'a> Scanner<'a> {
         true
     }
 
-    // TODO: test skip_whitespace function
-    fn skip_whitespace(&mut self) {
-        loop {
-            if let Some(c) = self.peek() {
+    // TODO: test kip_whitespace function
+    pub fn skip_whitespace(&mut self) {
+            while let Some(c) = self.peek() {
                 match c {
                     " " | "\r" | "\t" => {
+                        println!("advance");
                         self.advance();
-                        break;
                     }
                     "\n" => {
                         self.line += 1;
@@ -247,11 +249,10 @@ impl<'a> Scanner<'a> {
                     _ => return,
                 }
             }
-        }
     }
 
     // TODO: test tokenize_string function
-    fn tokenize_string(&mut self) -> Token {
+    pub fn tokenize_string(&mut self) -> Token {
         while let Some(c) = self.peek() {
             if c == "\"" {
                 break;
@@ -272,7 +273,7 @@ impl<'a> Scanner<'a> {
     }
 
     //TODO: test tokenize_number function
-    fn tokenize_number(&mut self) -> Token {
+    pub fn tokenize_number(&mut self) -> Token {
         // keep consuming numbers
         while let Some(peek) = self.peek() {
             if !is_digit(peek) {
@@ -301,7 +302,7 @@ impl<'a> Scanner<'a> {
     }
 
     // TODO: test tokenize_identifier function
-    fn tokenize_identifier(&mut self) -> Token {
+    pub fn tokenize_identifier(&mut self) -> Token {
         let peek = self.peek().unwrap();
         while is_alpha(peek) || is_digit(peek) {
             self.advance();
@@ -309,7 +310,7 @@ impl<'a> Scanner<'a> {
         self.make_token(self.identifier_type())
     }
 
-    fn identifier_type(&self) -> TokenKind {
+    pub fn identifier_type(&self) -> TokenKind {
         let c = self.current();
 
         match c {
@@ -350,7 +351,7 @@ impl<'a> Scanner<'a> {
     }
 
     // TODO: test check_keyword function
-    fn check_keyword(&self, start: usize, end: usize, the_rest: &str, kind: TokenKind) -> TokenKind {
+    pub fn check_keyword(&self, start: usize, end: usize, the_rest: &str, kind: TokenKind) -> TokenKind {
         if self.current - self.start == start + end
         && the_rest == &self.source[self.start + start..self.start + end] {
             return kind

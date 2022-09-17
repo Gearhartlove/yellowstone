@@ -4,6 +4,7 @@ use std::env;
 use crate::chunk::Chunk;
 use crate::debug::disassemble_chunk;
 use crate::vm::VM;
+use std::fs;
 
 mod chunk;
 mod common;
@@ -16,33 +17,16 @@ mod util;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let mut vm = VM::default();
+    let vm = VM::default();
 
     match args.len() {
         1 => { repl(vm) },
-        2 => { run_file(vm, args[1]) },
+        2 => { run_file(vm, &args[1]) },
         _ => { println!("Usage: clox [path]") }
     }
-
-    // let args: Vec<String> = env::args().collect();
-    //
-    // let mut vm: VM = VM {
-    //     chunk: None,
-    //     ip: 0,
-    //     stack: Stack::default()
-    // };
-    //
-    // if args.len() == 1 {
-    //     repl(&mut vm);
-    // } else if args.len() == 2 {
-    //     run_file(args.get(1).unwrap(), &mut vm)
-    // } else {
-    //     eprint!("Usage: clox [path]\n");
-    //     exit(64);
-    // }
 }
 
-fn run_file(vm: mut VM path: String) {
+fn run_file(mut vm: VM, path: &String) {
     let source = fs::read_to_string(path)
         .expect(format!("The file at {path} does not exist").as_str());
     
@@ -51,22 +35,21 @@ fn run_file(vm: mut VM path: String) {
     // couldo: custom exit 'enums'
     // ref: https://blog.rust-lang.org/2022/05/19/Rust-1.61.0.html
     match result {
-        Err(e) => { println!(Err(e.into())) },
+        Err(e) => { println!("{}", e) },
         Ok(_) => {},
     }
 }
 
-fn repl(vm: mut VM) {
+fn repl(mut vm: VM) {
     let mut line = String::new();
     loop {
         // request std input stream and print result
         match std::io::stdin().read_line(&mut line) {
-            Ok(_) => {
-                print!("> {line}");
-            }
+            Ok(_) => print!("> {line}"),
             Err(error) => println!("> error: {error}"),
         }
-        &vm.interpret(&line);
+
+        let result = &vm.interpret(&line);
         line.clear(); // clear buffer for next repl
     }
 }
