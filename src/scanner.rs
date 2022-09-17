@@ -78,7 +78,7 @@ pub struct Scanner<'a> {
     pub start: usize,
     pub current: usize,
     pub source_length: usize,
-    line: u8,
+    pub line: u8,
 }
 
 impl<'a> Scanner<'a> {
@@ -222,7 +222,6 @@ impl<'a> Scanner<'a> {
         true
     }
 
-    // TODO: test kip_whitespace function
     pub fn skip_whitespace(&mut self) {
             while let Some(c) = self.peek() {
                 match c {
@@ -233,13 +232,16 @@ impl<'a> Scanner<'a> {
                     "\n" => {
                         self.line += 1;
                         self.advance();
-                        return;
                     }
                     "/" => {
                         if self.expect("/") {
+                            println!("comment");
                             while let Some(peek) = self.peek() {
-                                if peek == "\n" { break };
                                 self.advance();
+                                if peek == "\n" { 
+                                    self.line += 1;
+                                    break;
+                                };
                             }
                         } else {
                             return;

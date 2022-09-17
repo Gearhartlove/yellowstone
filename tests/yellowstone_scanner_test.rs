@@ -60,10 +60,47 @@ fn skip_whitespace_space_source_test() {
 
 #[test]
 fn skip_whitespace_new_line_test() {
-    let source = String::from("\n \ns\n    ");
+    let source = String::from("\n");
     let mut sc = Scanner::new(&source);
     sc.skip_whitespace();
-    assert_eq!(None, sc.peek());
+    assert_eq!(2, sc.line);
+
+    let source = String::from("\n\n\n");
+    let mut sc = Scanner::new(&source);
+    sc.skip_whitespace();
+    assert_eq!(4, sc.line);
+
+    let source = String::from("\ny\n\ns");
+    let mut sc = Scanner::new(&source);
+    sc.skip_whitespace();
+    assert_eq!(2, sc.line);
+    assert_eq!("y", sc.peek().unwrap());
+    sc.advance();
+    sc.skip_whitespace();
+    assert_eq!(4, sc.line);
+    assert_eq!("s", sc.peek().unwrap());
+}
+
+#[test]
+fn skip_whitespace_comment_test() {
+    let source = String::from("//comment\ny");
+    let mut sc = Scanner::new(&source);
+    sc.skip_whitespace();
+    assert_eq!("y", sc.peek().unwrap());
+
+    let source = String::from("y//comment\ns");
+    let mut sc = Scanner::new(&source);
+    sc.advance(); // advance pass "y"
+    sc.skip_whitespace();
+    assert_eq!("s", sc.peek().unwrap());
+}
+
+#[test]
+fn skip_whitespace_no_whitespace_test() {
+    let source = String::from("ys");
+    let mut sc = Scanner::new(&source);
+    sc.skip_whitespace();
+    assert_eq!("y", sc.peek().unwrap());
 }
 
 #[test]
