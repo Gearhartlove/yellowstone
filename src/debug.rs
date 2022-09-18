@@ -1,7 +1,7 @@
 use crate::chunk::get_line;
 use crate::op_code::OpCode;
 use crate::op_code::OpCode::*;
-use crate::Chunk;
+use crate::chunk::*;
 
 pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
     println!("== {} ==", name);

@@ -3,7 +3,6 @@
 use crate::scanner::TokenKind::*;
 use crate::util::*;
 use std::fmt::{Display, Formatter};
-use std::collections::{HashMap};
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq)]
@@ -84,7 +83,7 @@ pub struct Scanner<'a> {
 impl<'a> Scanner<'a> {
     pub fn new(source: &'a String) -> Self {
         Self {
-            source,
+            source, 
             current: 0,
             start: 0,
             source_length: source.len(),
@@ -96,14 +95,17 @@ impl<'a> Scanner<'a> {
         &self.source[self.start..self.start + 1]
     }
 
+    fn start_next(&self) -> &'a str {
+        &self.source[self.start + 1 .. self.start + 2]
+    }
+
     fn current(&self) -> &'a str {
         &self.source[self.current..self.current + 1]
     }
 
     pub fn scan_token(&mut self) -> Token {
         self.skip_whitespace();
-
-        self.advance();
+        
         self.start = self.current;
 
         if self.is_at_end() {
@@ -113,7 +115,8 @@ impl<'a> Scanner<'a> {
         let c = self.start();
 
         if is_alpha(c) {
-            return self.tokenize_string();
+            // NOTE: should be tokenize_identifier?
+            return self.tokenize_identifier();
         }
         if is_digit(c) {
             return self.tokenize_number();
@@ -166,10 +169,12 @@ impl<'a> Scanner<'a> {
                 }
             }
             "\"" => {
+                self.advance(); // advance past the \"
                 return self.tokenize_string();
             }
             _ => {}
         }
+        self.advance();
         self.error_token("Unexpected character.")
     }
 
@@ -271,7 +276,7 @@ impl<'a> Scanner<'a> {
 
         // The closing quote
         self.advance();
-        return self.make_token(TOKEN_STRING);
+        self.make_token(TOKEN_STRING)
     }
 
     //TODO: test tokenize_number function
@@ -300,20 +305,21 @@ impl<'a> Scanner<'a> {
                 }
             }
         }
-        return self.make_token(TOKEN_NUMBER);
+        self.make_token(TOKEN_NUMBER)
     }
 
     // TODO: test tokenize_identifier function
     pub fn tokenize_identifier(&mut self) -> Token {
-        let peek = self.peek().unwrap();
-        while is_alpha(peek) || is_digit(peek) {
-            self.advance();
+        while let Some(peek) = self.peek() {
+            if is_alpha(peek) || is_digit(peek) {
+                self.advance();
+            }
         }
         self.make_token(self.identifier_type())
     }
 
     pub fn identifier_type(&self) -> TokenKind {
-        let c = self.current();
+        let c = self.start();
 
         match c {
             "a" => return self.check_keyword(1, 2, "nd", TOKEN_AND),
@@ -321,7 +327,7 @@ impl<'a> Scanner<'a> {
             "e" => return self.check_keyword(1, 3, "lse", TOKEN_ELSE),
             "f" => {
                 if self.current - self.start > 1 {
-                    match self.peek().unwrap() {
+                    match self.start_next() {
                         "a" => return self.check_keyword(2, 3, "lse", TOKEN_FALSE),
                         "o" => return self.check_keyword(2, 1, "r", TOKEN_FOR),
                         "u" => return self.check_keyword(2, 1, "n", TOKEN_FUN),
@@ -331,13 +337,13 @@ impl<'a> Scanner<'a> {
             }
             "i" => return self.check_keyword(1, 1, "f", TOKEN_IF),
             "n" => return self.check_keyword(1, 2, "il", TOKEN_NIL),
-            "o" => return self.check_keyword(1, 1, "or", TOKEN_OR),
+            "o" => return self.check_keyword(1, 1, "r", TOKEN_OR),
             "p" => return self.check_keyword(1, 4, "rint", TOKEN_PRINT),
             "r" => return self.check_keyword(1, 5, "eturn", TOKEN_RETURN),
             "s" => return self.check_keyword(1, 4, "uper", TOKEN_SUPER),
             "t" => {
                 if self.current - self.start > 1 {
-                    match self.peek().unwrap() {
+                    match self.start_next() {
                         "h" => return self.check_keyword(2, 2, "is", TOKEN_THIS),
                         "r" => return self.check_keyword(2, 2, "ue", TOKEN_TRUE),
                         _ => {}
@@ -355,7 +361,7 @@ impl<'a> Scanner<'a> {
     // TODO: test check_keyword function
     pub fn check_keyword(&self, start: usize, end: usize, the_rest: &str, kind: TokenKind) -> TokenKind {
         if self.current - self.start == start + end
-        && the_rest == &self.source[self.start + start..self.start + end] {
+        && the_rest == &self.source[self.start + start..(self.start + start + end)] {
             return kind
         } 
         TOKEN_IDENTIFIER

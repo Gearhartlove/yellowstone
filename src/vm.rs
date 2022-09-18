@@ -1,8 +1,8 @@
-use crate::op_code::OpCode;
-use crate::op_code::OpCode::*;
+use crate::op_code::{OpCode, OpCode::*};
 use crate::scanner::TokenKind::*;
 use crate::scanner::{Scanner, Token};
-use crate::{disassemble_chunk, Chunk};
+use crate::chunk::Chunk;
+use crate::debug::disassemble_chunk;
 
 #[allow(non_camel_case_types)]
 #[derive(PartialEq)]

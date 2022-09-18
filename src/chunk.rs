@@ -120,7 +120,7 @@ pub fn get_line(offset: &mut u32, lines: &String) -> String {
 mod tests {
     use crate::chunk::get_line;
     use crate::op_code::OpCode;
-    use crate::Chunk;
+    use crate::chunk::*;
 
     #[test]
     fn encode_test() {
