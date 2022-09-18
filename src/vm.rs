@@ -56,6 +56,8 @@ impl VM {
             if token.kind == TOKEN_EOF {
                 break;
             }
+            
+            scanner.advance();
         }
     }
 

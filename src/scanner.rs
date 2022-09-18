@@ -174,7 +174,6 @@ impl<'a> Scanner<'a> {
             }
             _ => {}
         }
-        self.advance();
         self.error_token("Unexpected character.")
     }
 
@@ -201,7 +200,6 @@ impl<'a> Scanner<'a> {
 
     pub fn advance(&mut self) {
         self.current += 1;
-        println!("curr: {}", self.current);
     }
 
     pub fn peek(&self) -> Option<&'a str> {
@@ -231,7 +229,6 @@ impl<'a> Scanner<'a> {
             while let Some(c) = self.peek() {
                 match c {
                     " " | "\r" | "\t" => {
-                        println!("advance");
                         self.advance();
                     }
                     "\n" => {
@@ -240,7 +237,6 @@ impl<'a> Scanner<'a> {
                     }
                     "/" => {
                         if self.expect("/") {
-                            println!("comment");
                             while let Some(peek) = self.peek() {
                                 self.advance();
                                 if peek == "\n" { 
