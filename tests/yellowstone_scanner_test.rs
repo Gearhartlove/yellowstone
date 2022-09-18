@@ -20,6 +20,11 @@ fn tokenizer_additive_test() {
 }
 
 #[test]
+fn tokenizer_expression_test() {
+    assert_tokens_are!("print 1 + 1", TOKEN_PRINT, TOKEN_NUMBER, TOKEN_PLUS, TOKEN_NUMBER, TOKEN_EOF);
+}
+
+#[test]
 fn peek_test() {
     let source = String::from("Hi!");
     let mut sc = Scanner::new(&source);

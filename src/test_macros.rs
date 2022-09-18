@@ -13,9 +13,7 @@ macro_rules! assert_tokens_are {
             let mut scanner = Scanner::from(&source);
             let mut i = 0;
             while !scanner.is_at_end() {
-                println!("scan token");
                 let token = scanner.scan_token();
-                println!("{}", token.kind);
                 // compare token to vec values
                 if let Some(t_kind) = temp_vec.get(i) {
                     assert_eq!(&token.kind, t_kind);

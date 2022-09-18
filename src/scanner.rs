@@ -304,11 +304,12 @@ impl<'a> Scanner<'a> {
         self.make_token(TOKEN_NUMBER)
     }
 
-    // TODO: test tokenize_identifier function
     pub fn tokenize_identifier(&mut self) -> Token {
         while let Some(peek) = self.peek() {
             if is_alpha(peek) || is_digit(peek) {
                 self.advance();
+            } else {
+                break;
             }
         }
         self.make_token(self.identifier_type())
