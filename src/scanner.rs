@@ -115,7 +115,6 @@ impl<'a> Scanner<'a> {
         let c = self.start();
 
         if is_alpha(c) {
-            // NOTE: should be tokenize_identifier?
             return self.tokenize_identifier();
         }
         if is_digit(c) {
@@ -254,7 +253,6 @@ impl<'a> Scanner<'a> {
             }
     }
 
-    // TODO: test tokenize_string function
     pub fn tokenize_string(&mut self) -> Token {
         while let Some(c) = self.peek() {
             if c == "\"" {
@@ -275,7 +273,6 @@ impl<'a> Scanner<'a> {
         self.make_token(TOKEN_STRING)
     }
 
-    //TODO: test tokenize_number function
     pub fn tokenize_number(&mut self) -> Token {
         // keep consuming numbers
         while let Some(peek) = self.peek() {
@@ -355,7 +352,6 @@ impl<'a> Scanner<'a> {
         TOKEN_IDENTIFIER
     }
 
-    // TODO: test check_keyword function
     pub fn check_keyword(&self, start: usize, end: usize, the_rest: &str, kind: TokenKind) -> TokenKind {
         if self.current - self.start == start + end
         && the_rest == &self.source[self.start + start..(self.start + start + end)] {
@@ -363,25 +359,10 @@ impl<'a> Scanner<'a> {
         } 
         TOKEN_IDENTIFIER
     }
-
-    //fn check_keyword(&self, start: u8, length: u8, rest: &str, kind: TokenKind) -> TokenKind {
-    //    let keyword_start = unsafe {
-    //        new_inc_ptr(self.start, start as usize)
-    //    };
-
-    //    let current_byte = self.current_byte();
-    //    if bytes_between(current_byte, self.start) == (start + length) as i64
-    //        && memcmp_equal(keyword_start, rest, length as usize) {
-    //        return kind;
-    //    } else {
-    //        return TOKEN_IDENTIFIER;
-    //    }
-    //}
 }
 
 impl<'a> From<&'a String> for Scanner<'a> {
     fn from(source: &'a String) -> Self {
-        let source_length = source.len(); // necessary to tell to insert EOF token
         Scanner {
             source,
             start: 0,

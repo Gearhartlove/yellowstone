@@ -15,7 +15,6 @@ fn tokenizer_basic_test() {
 
 #[test]
 fn tokenizer_additive_test() {
-    // skipping the + symbol
     assert_tokens_are!("1 + 1", TOKEN_NUMBER, TOKEN_PLUS, TOKEN_NUMBER, TOKEN_EOF);
 }
 
