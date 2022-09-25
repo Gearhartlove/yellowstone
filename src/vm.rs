@@ -1,16 +1,22 @@
 use crate::op_code::{OpCode, OpCode::*};
 use crate::scanner::TokenKind::*;
 use crate::scanner::{Scanner, Token};
+use crate::compiler::compile;
 use crate::chunk::Chunk;
 use crate::debug::disassemble_chunk;
 
 #[allow(non_camel_case_types)]
 #[derive(PartialEq)]
-pub enum InterpretResult {
-    INTERPRET_CONTINUE,
-    INTERPRET_OK,
+pub enum InterpretError {
     INTERPRET_COMPILE_ERROR,
     INTERPRET_RUNTIME_ERROR,
+}
+
+#[allow(non_camel_case_types)]
+#[derive(PartialEq)]
+pub enum InterpretOk{
+    INTERPRET_CONTINUE,
+    INTERPRET_OK,
 }
 
 const STACK_MAX: usize = 256;
@@ -27,9 +33,18 @@ pub struct VM {
 impl VM {
     pub const DEBUG_EXECUTION_TRACING: bool = false;
 
-    pub fn interpret(&mut self, source: &String) -> Result<(), Box<dyn std::error::Error>> {
-        self.compile(source);
-        Ok(())
+    pub fn interpret(&mut self, source: &String) -> Result<InterpretOk, InterpretError> {
+        let chunk = Chunk::default();
+        if !compile(source, &chunk) {
+            return Err(InterpretError::INTERPRET_COMPILE_ERROR);
+        }
+
+        self.chunk = &chunk;
+        self.ip = 0; // Q
+
+        let result = self.run();
+
+        return result;
     }
 
     fn push(&mut self, value: f32) {
@@ -39,30 +54,8 @@ impl VM {
         self.stack.pop().unwrap()
     }
 
-    pub fn compile(&mut self, source: &String) {
-        let mut scanner = Scanner::from(source);
-        let mut line = 0; //todo: why start at -1 in book ?
-        loop {
-            let token: Token = scanner.scan_token(); //todo scanner.scan_token() implementation
-            if token.line != line {
-                print!("{:4}", token.line);
-                line = token.line;
-            } else {
-                print!("   | ")
-            }
-            // todo create a print word
-            print!("{:2} ", token.kind);
-            println!("{}", token.slice);
-            if token.kind == TOKEN_EOF {
-                break;
-            }
-            
-            scanner.advance();
-        }
-    }
-
     //Q: what happens when there are multiple chunks?
-    pub fn run(&mut self) -> InterpretResult {
+    pub fn run(&mut self) -> Result<InterpretOk, InterpretError> {
         loop {
             // if debug flag enabled, print each instruction before execution
             if VM::DEBUG_EXECUTION_TRACING {
@@ -81,36 +74,36 @@ impl VM {
                     } else {
                         println!("Stack is empty, nothing to pop")
                     }
-                    InterpretResult::INTERPRET_OK
+                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_CONSTANT(c) => {
                     // println!("{c}");
                     let c = c.clone();
                     self.stack.push(c);
-                    InterpretResult::INTERPRET_CONTINUE
+                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_NEGATE => {
                     let pop_val = self.stack.pop().unwrap();
                     self.stack.push(
                         pop_val * -1., // negating
                     );
-                    InterpretResult::INTERPRET_CONTINUE //is this right?
+                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_ADD => {
                     binary_operator(self, '+');
-                    InterpretResult::INTERPRET_CONTINUE
+                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_SUBTRACT => {
                     binary_operator(self, '-');
-                    InterpretResult::INTERPRET_CONTINUE
+                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_MULTIPLY => {
                     binary_operator(self, '*');
-                    InterpretResult::INTERPRET_CONTINUE
+                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_DIVIDE => {
                     binary_operator(self, '/');
-                    InterpretResult::INTERPRET_CONTINUE
+                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_CONSTANT_LONG(_) => {
                     unimplemented!()
@@ -120,7 +113,7 @@ impl VM {
                 }
             };
 
-            if result == InterpretResult::INTERPRET_OK {
+            if result == InterpretOk::INTERPRET_OK {
                 return result;
             }
         }

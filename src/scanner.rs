@@ -5,7 +5,7 @@ use crate::util::*;
 use std::fmt::{Display, Formatter};
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenKind {
     // Single-character tokens.
     TOKEN_LEFT_PAREN,
