@@ -30,10 +30,48 @@ enum Precedence {
     PREC_PRIMARY
 }
 
-struct ParseRule {
-    prefix: ParseFn,
-    infix: ParseFn,
+struct ParseRule<'a> {
+    prefix: Option<&'a dyn Fn(&mut Parser)>,
+    infix: Option<&'a dyn Fn(&mut Parser)>,
     precedence: Precedence,
+}
+
+
+// Functions to match each expression type
+fn grouping(parser: &mut Parser) {
+    parser.expression();
+    parser.consume(TokenKind::TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
+}
+
+fn number(parser: &mut Parser) {
+    let value = parser.previous.slice.parse::<f32>().unwrap();
+}
+
+fn binary(parser: &mut Parser) {
+    let operator_type = parser.previous.kind.clone();
+    let rule = getRule(operator_type);
+    //parser.parse_precedence((Precedenc)(rule-> precedence + 1));
+
+    match operator_type {
+        TokenKind::TOKEN_PLUS => { parser.emit_byte(OpCode::OP_ADD) },
+        TokenKind::TOKEN_MINUS => { parser.emit_byte(OpCode::OP_SUBTRACT) },
+        TokenKind::TOKEN_STAR => { parser.emit_byte(OpCode::OP_MULTIPLY) },
+        TokenKind::TOKEN_SLASH => { parser.emit_byte(OpCode::OP_DIVIDE) },
+        _ => {}
+    }
+}
+
+fn unary(parser: &mut Parser) {
+    let operator_type = parser.previous.kind.clone();
+
+    // Compile the operand
+    parse_precedence(Precedence::PREC_UNARY);
+
+    // Emit the operator instruction
+    match operator_type {
+        TokenKind::TOKEN_MINUS => { parser.emitByte(OpCode::OP_NEGATE); }
+        _ => {}
+    }
 }
 
 // NOTE: the following lifetimes do not look right
@@ -112,22 +150,7 @@ impl Parser {
         self.parse_precedence(Precedence::PREC_ASSIGNMENT);
     }
 
-    fn number(&self) {
-        let value = self.previous.slice.parse::<f32>().unwrap();
-    }
 
-    fn unary(&mut self) {
-        let operator_type = self.previous.kind.clone();
-
-        // Compile the operand
-        parse_precedence(Precedence::PREC_UNARY);
-
-        // Emit the operator instruction
-        match operator_type {
-            TokenKind::TOKEN_MINUS => { self.emitByte(OpCode::OP_NEGATE); }
-            _ => {}
-        }
-    }
 
     fn parse_precedence(&mut self, precedence: Precedence) {
 
@@ -137,24 +160,7 @@ impl Parser {
         emit_return(chunk)
     }
 
-    fn binary(self) {
-        let operator_type = self.previous.kind.clone();
-        let rule = getRule(operator_type);
-        //self.parse_precedence((Precedenc)(rule-> precedence + 1));
 
-        match operator_type {
-            TokenKind::TOKEN_PLUS => { self.emit_byte(OpCode::OP_ADD) },
-            TokenKind::TOKEN_MINUS => { self.emit_byte(OpCode::OP_SUBTRACT) },
-            TokenKind::TOKEN_STAR => { self.emit_byte(OpCode::OP_MULTIPLY) },
-            TokenKind::TOKEN_SLASH => { self.emit_byte(OpCode::OP_DIVIDE) },
-            _ => {}
-        }
-    }
-
-    fn grouping(&mut self) {
-        self.expression();
-        self.consume(TokenKind::TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
-    }
 
     fn emit_return(chunk: &mut Chunk) {
         emit_byte(OpCode::OP_RETURN, chunk);
@@ -177,6 +183,207 @@ impl Parser {
     fn emit_bytes(opcode1: OpCode, opcode2: OpCode, chunk: &mut Chunk) {
         emit_byte(opcode1, chunk);
         emit_byte(opcode2, chunk);
+    }
+
+    fn get_rule(&mut self, kind: TokenKind) -> ParseRule {
+        match kind {
+            TOKEN_LEFT_PAREN => { ParseRule {
+                prefix: Some(&grouping(&mut self)),
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_RIGHT_PAREN => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_LEFT_BRACE => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_RIGHT_BRACE => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_COMMA => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_DOT => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_MINUS => { ParseRule {
+                prefix: Some(&unary(&mut self)),
+                infix: Some(&binary(&mut self)),
+                precedence: Precedence::PREC_TERM
+            }}
+            TOKEN_PLUS => { ParseRule {
+                prefix: None,
+                infix: Some(&binary(&mut self)),
+                precedence: Precedence::PREC_TERM
+            }}
+            TOKEN_SEMICOLON => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_SLASH => { ParseRule {
+                prefix: None,
+                infix: Some(&binary(&mut self)),
+                precedence: Precedence::PREC_FACTOR
+            }}
+            TOKEN_STAR => { ParseRule {
+                prefix: None,
+                infix: Some(&binary(&mut self)),
+                precedence: Precedence::PREC_FACTOR
+            }}
+            TOKEN_BANG => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_BANG_EQUAL => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_EQUAL => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_EQUAL_EQUAL => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_GREATER => {}
+            TOKEN_GREATER_EQUAL => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_LESS => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_LESS_EQUAL => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_IDENTIFIER => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_STRING => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_NUMBER => { ParseRule {
+                prefix: Some(&number(&mut self)),
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_AND => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_CLASS => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_ELSE => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_FALSE => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_FOR => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_FUN => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_IF => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_NIL => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_OR => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_PRINT => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_RETURN => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_SUPER => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_THIS => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_TRUE => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_VAR => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_WHILE => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_ERROR => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+            TOKEN_EOF => { ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::PREC_NONE
+            }}
+        }
     }
 
 }
