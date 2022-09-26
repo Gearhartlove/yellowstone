@@ -7,7 +7,7 @@ use crate::vm::VM;
 use std::fs;
 
 mod chunk;
-mod common;
+mod compiler;
 mod debug;
 mod op_code;
 mod vm;
@@ -35,7 +35,7 @@ fn run_file(mut vm: VM, path: &String) {
     // couldo: custom exit 'enums'
     // ref: https://blog.rust-lang.org/2022/05/19/Rust-1.61.0.html
     match result {
-        Err(e) => { println!("{}", e) },
+        Err(e) => { println!("{:?}", e) },
         Ok(_) => {},
     }
 }

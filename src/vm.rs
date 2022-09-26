@@ -1,12 +1,10 @@
 use crate::op_code::{OpCode, OpCode::*};
-use crate::scanner::TokenKind::*;
-use crate::scanner::{Scanner, Token};
-use crate::compiler::compile;
 use crate::chunk::Chunk;
+use crate::compiler::compile;
 use crate::debug::disassemble_chunk;
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum InterpretError {
     INTERPRET_COMPILE_ERROR,
     INTERPRET_RUNTIME_ERROR,
@@ -34,17 +32,20 @@ impl VM {
     pub const DEBUG_EXECUTION_TRACING: bool = false;
 
     pub fn interpret(&mut self, source: &String) -> Result<InterpretOk, InterpretError> {
-        let chunk = Chunk::default();
-        if !compile(source, &chunk) {
-            return Err(InterpretError::INTERPRET_COMPILE_ERROR);
+        let result = compile(source);
+        match result {
+            Err(_) => {
+                return Err(InterpretError::INTERPRET_COMPILE_ERROR)
+            },
+            Ok(chunk) => {
+                self.chunk = chunk;
+                self.ip = 0; // Q
+
+                let result = self.run();
+
+                return result;
+            },
         }
-
-        self.chunk = &chunk;
-        self.ip = 0; // Q
-
-        let result = self.run();
-
-        return result;
     }
 
     fn push(&mut self, value: f32) {
@@ -113,7 +114,7 @@ impl VM {
                 }
             };
 
-            if result == InterpretOk::INTERPRET_OK {
+            if let Ok(InterpretOk::INTERPRET_OK) = result {
                 return result;
             }
         }

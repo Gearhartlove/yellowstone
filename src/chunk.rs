@@ -17,10 +17,9 @@ impl Default for Chunk {
 }
 
 impl Chunk {
-    pub fn write_chunk(mut self, op: OpCode, line: usize) -> Self {
+    pub fn write_chunk(&mut self, op: OpCode, line: usize) {
         self.code.push(op);
-        encode(&mut self, line);
-        return self;
+        encode(self, line);
     }
 
     pub fn add_constant(&mut self, constant: f32) -> usize {

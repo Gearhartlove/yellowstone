@@ -5,7 +5,7 @@ use crate::util::*;
 use std::fmt::{Display, Formatter};
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TokenKind {
     // Single-character tokens.
     TOKEN_LEFT_PAREN,
@@ -60,28 +60,28 @@ impl Display for TokenKind {
     }
 }
 
-pub struct Token<'a> {
+pub struct Token<'source> {
     pub kind: TokenKind,
-    pub slice: &'a str,
+    pub slice: &'source str,
     pub line: u8,
 }
 
-impl<'a> Token<'a> {
-    pub fn new(kind: TokenKind, slice: &'a str, line: u8) -> Self {
+impl<'source> Token<'source> {
+    pub fn new(kind: TokenKind, slice: &'source str, line: u8) -> Self {
         Token { kind, slice, line }
     }
 }
 
-pub struct Scanner<'a> {
-    pub source: &'a String,
+pub struct Scanner<'source> {
+    pub source: &'source String,
     pub start: usize,
     pub current: usize,
     pub source_length: usize,
     pub line: u8,
 }
 
-impl<'a> Scanner<'a> {
-    pub fn new(source: &'a String) -> Self {
+impl<'source> Scanner<'source> {
+    pub fn new(source: &'source String) -> Self {
         Self {
             source, 
             current: 0,
@@ -91,19 +91,19 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn start(&self) -> &'a str {
+    fn start(&self) -> &'source str {
         &self.source[self.start..self.start + 1]
     }
 
-    fn start_next(&self) -> &'a str {
+    fn start_next(&self) -> &'source str {
         &self.source[self.start + 1 .. self.start + 2]
     }
 
-    fn current(&self) -> &'a str {
+    fn current(&self) -> &'source str {
         &self.source[self.current..self.current + 1]
     }
 
-    pub fn scan_token(&mut self) -> Token {
+    pub fn scan_token(&mut self) -> Token<'source> {
         self.skip_whitespace();
         
         self.start = self.current;
@@ -176,13 +176,13 @@ impl<'a> Scanner<'a> {
         self.error_token("Unexpected character.")
     }
 
-    fn make_token(&self, kind: TokenKind) -> Token {
+    fn make_token(&self, kind: TokenKind) -> Token<'source> {
         let line = self.line;
         let slice = &self.source[self.start..self.current];
         Token::new(kind, slice, line)
     }
 
-    fn error_token(&self, message: &'a str) -> Token {
+    fn error_token(&self, message: &'source str) -> Token<'source> {
         let kind = TOKEN_ERROR;
         let line = self.line;
         Token::new(kind, message, line)
@@ -201,21 +201,21 @@ impl<'a> Scanner<'a> {
         self.current += 1;
     }
 
-    pub fn peek(&self) -> Option<&'a str> {
+    pub fn peek(&self) -> Option<&'source str> {
         if self.is_at_end() {
             return None;
         }
         Some(&self.source[self.current..self.current + 1])
     }
 
-    pub fn peek_next(&self) -> Option<&'a str> {
+    pub fn peek_next(&self) -> Option<&'source	 str> {
         if self.is_at_peek_next_end() {
             return None;
         }
         Some(&self.source[self.current + 1..self.current + 2])
     }
 
-    pub fn expect(&self, expected: &'a str) -> bool {
+    pub fn expect(&self, expected: &'source str) -> bool {
         if let Some(peek) = self.peek() {
             if peek != expected {
                 return false;
@@ -253,7 +253,7 @@ impl<'a> Scanner<'a> {
             }
     }
 
-    pub fn tokenize_string(&mut self) -> Token {
+    pub fn tokenize_string(&mut self) -> Token<'source> {
         while let Some(c) = self.peek() {
             if c == "\"" {
                 break;
@@ -273,7 +273,7 @@ impl<'a> Scanner<'a> {
         self.make_token(TOKEN_STRING)
     }
 
-    pub fn tokenize_number(&mut self) -> Token {
+    pub fn tokenize_number(&mut self) -> Token<'source> {
         // keep consuming numbers
         while let Some(peek) = self.peek() {
             if !is_digit(peek) {
@@ -301,7 +301,7 @@ impl<'a> Scanner<'a> {
         self.make_token(TOKEN_NUMBER)
     }
 
-    pub fn tokenize_identifier(&mut self) -> Token {
+    pub fn tokenize_identifier(&mut self) -> Token<'source> {
         while let Some(peek) = self.peek() {
             if is_alpha(peek) || is_digit(peek) {
                 self.advance();
@@ -361,8 +361,8 @@ impl<'a> Scanner<'a> {
     }
 }
 
-impl<'a> From<&'a String> for Scanner<'a> {
-    fn from(source: &'a String) -> Self {
+impl<'source> From<&'source String> for Scanner<'source> {
+    fn from(source: &'source String) -> Self {
         Scanner {
             source,
             start: 0,
