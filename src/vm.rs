@@ -2,6 +2,7 @@ use crate::op_code::{OpCode, OpCode::*};
 use crate::chunk::Chunk;
 use crate::compiler::compile;
 use crate::debug::disassemble_chunk;
+use crate::vm::InterpretOk::INTERPRET_OK;
 
 #[allow(non_camel_case_types)]
 #[derive(PartialEq, Debug)]
@@ -29,7 +30,7 @@ pub struct VM {
 }
 
 impl VM {
-    pub const DEBUG_EXECUTION_TRACING: bool = false;
+    pub const DEBUG_EXECUTION_TRACING: bool = true;
 
     pub fn interpret(&mut self, source: &String) -> Result<InterpretOk, InterpretError> {
         let result = compile(source);
@@ -57,54 +58,49 @@ impl VM {
 
     //Q: what happens when there are multiple chunks?
     pub fn run(&mut self) -> Result<InterpretOk, InterpretError> {
-        loop {
-            // if debug flag enabled, print each instruction before execution
-            if VM::DEBUG_EXECUTION_TRACING {
-                println!("           ");
-                for val in self.stack.iter() {
-                    println!("[{}]", val);
-                }
-                disassemble_chunk(&self.chunk, "chunk")
+        // if debug flag enabled, print each instruction before execution
+        if VM::DEBUG_EXECUTION_TRACING {
+            println!("           ");
+            for val in self.stack.iter() {
+                println!("[{}]", val);
             }
+            disassemble_chunk(&self.chunk, "chunk");
+            println!();
+        }
 
+        loop {
             let instruction = self.read_byte();
-            let result = match instruction {
+            let mut intepret_ok: bool = false;
+            match instruction {
                 OP_RETURN => {
                     if let Some(v) = self.stack.pop() {
                         println!("{}", v);
                     } else {
                         println!("Stack is empty, nothing to pop")
                     }
-                    Ok(InterpretOk::INTERPRET_OK)
+                    intepret_ok = true;
                 }
                 OP_CONSTANT(c) => {
-                    // println!("{c}");
                     let c = c.clone();
                     self.stack.push(c);
-                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_NEGATE => {
                     let pop_val = self.stack.pop().unwrap();
                     self.stack.push(
                         pop_val * -1., // negating
                     );
-                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_ADD => {
                     binary_operator(self, '+');
-                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_SUBTRACT => {
                     binary_operator(self, '-');
-                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_MULTIPLY => {
                     binary_operator(self, '*');
-                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_DIVIDE => {
                     binary_operator(self, '/');
-                    Ok(InterpretOk::INTERPRET_OK)
                 }
                 OP_CONSTANT_LONG(_) => {
                     unimplemented!()
@@ -114,8 +110,8 @@ impl VM {
                 }
             };
 
-            if let Ok(InterpretOk::INTERPRET_OK) = result {
-                return result;
+            if intepret_ok {
+                return Ok(INTERPRET_OK);
             }
         }
     }

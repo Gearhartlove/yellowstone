@@ -5,7 +5,7 @@ use crate::util::*;
 use std::fmt::{Display, Formatter};
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TokenKind {
     // Single-character tokens.
     TOKEN_LEFT_PAREN,
@@ -177,6 +177,9 @@ impl<'source> Scanner<'source> {
     }
 
     fn make_token(&self, kind: TokenKind) -> Token<'source> {
+        if kind == TokenKind::TOKEN_EOF {
+            return Token::new(kind, "EOF", self.line);
+        }
         let line = self.line;
         let slice = &self.source[self.start..self.current];
         Token::new(kind, slice, line)

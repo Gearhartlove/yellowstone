@@ -19,7 +19,7 @@ impl Default for Chunk {
 impl Chunk {
     pub fn write_chunk(&mut self, op: OpCode, line: usize) {
         self.code.push(op);
-        encode(self, line);
+        //encode(self, line);
     }
 
     pub fn add_constant(&mut self, constant: f32) -> usize {
@@ -50,6 +50,7 @@ fn encode(chunk: &mut Chunk, curr_line: usize) {
         chunk.lines.pop();
         // get the number by popping then reversing
         let mut num = "".to_string();
+        println!("{}", num);
         loop {
             match chunk.lines.pop() {
                 None => {
@@ -117,7 +118,7 @@ pub fn get_line(offset: &mut u32, lines: &String) -> String {
 
 #[allow(unused_imports)]
 mod tests {
-    use crate::chunk::get_line;
+    use crate::chunk::*;
     use crate::op_code::OpCode;
     use crate::chunk::*;
 

@@ -16,10 +16,10 @@ pub fn compile(source: &String) -> Result<Chunk, ()>{
     parser.end_compiler();
     return match parser.had_error {
         true => {
-            Ok(current_chunk)
+            Err(())
         },
         false => {
-            Err(())
+            Ok(current_chunk)
         },
     }
 }
@@ -38,6 +38,24 @@ enum Precedence {
     PREC_UNARY,       // ! -
     PREC_CALL,        // . ()
     PREC_PRIMARY
+}
+
+impl Precedence {
+    fn get_enum(prec: usize) -> Self {
+        return match prec {
+            0 => { Precedence::PREC_NONE },
+            1 => { Precedence::PREC_ASSIGNMENT },
+            2 => { Precedence::PREC_OR },
+            3 => { Precedence::PREC_AND },
+            4 => { Precedence::PREC_EQUALITY },
+            5 => { Precedence::PREC_COMPARISON },
+            6 => { Precedence::PREC_TERM },
+            7 => { Precedence::PREC_FACTOR },
+            8 => { Precedence::PREC_UNARY },
+            9 => { Precedence::PREC_CALL },
+            _ => { Precedence::PREC_PRIMARY },
+        }
+    }
 }
 
 enum ErrorAt {
@@ -60,12 +78,14 @@ fn grouping<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut
 
 fn number<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
     let value = parser.previous.as_ref().unwrap().slice.parse::<f32>().unwrap();
+    parser.emit_constant(value);
 }
 
 fn binary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
     let operator_type = parser.previous.as_ref().unwrap().kind.clone();
     let rule = get_rule(operator_type);
-    //parser.parse_precedence((Precedenc)(rule-> precedence + 1));
+    let prec = rule.precedence as usize;
+    parser.parse_precedence(Precedence::get_enum(prec), scanner);
 
     match operator_type {
         TokenKind::TOKEN_PLUS => { parser.emit_byte(OpCode::OP_ADD) },
@@ -122,6 +142,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
 
         loop {
             self.current = Some(scanner.scan_token());
+            scanner.advance();
             if self.current.as_ref().unwrap().kind != TokenKind::TOKEN_ERROR {
                 break;
             } else {
@@ -174,15 +195,14 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
     }
 
     fn parse_precedence(&mut self, precedence: Precedence, scanner: &mut Scanner<'source>) {
-        let prev = self.previous.as_ref().unwrap().kind.clone();
-
         self.advance(scanner);
-        let prefix_rule = get_rule(prev).prefix;
+        let prev_kind = self.previous.as_ref().unwrap().kind.clone();
+
+        let prefix_rule = get_rule(prev_kind).prefix;
         if let Some(rule) = prefix_rule {
             rule(self, scanner);
 
-            let current = self.current.as_ref().unwrap().kind.clone();
-            while precedence <= get_rule(current).precedence {
+            while precedence <= get_rule(self.current.as_ref().unwrap().kind.clone()).precedence {
                 self.advance(scanner);
 
                 let prev = self.previous.as_ref().unwrap().kind.clone();
@@ -193,6 +213,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
             }
         } else {
             eprint!("Expect expression.");
+            return;
         }
     }
 
