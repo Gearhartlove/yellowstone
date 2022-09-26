@@ -40,6 +40,11 @@ enum Precedence {
     PREC_PRIMARY
 }
 
+enum ErrorAt {
+    Current,
+    Before
+}
+
 struct ParseRule<'function, 'source, 'chunk> {
     prefix: Option<&'function dyn Fn(&mut Parser<'source, 'chunk>, &mut Scanner<'source>)>,
     infix: Option<&'function dyn Fn(&mut Parser<'source, 'chunk>, &mut Scanner<'source>)>,
@@ -54,11 +59,11 @@ fn grouping<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut
 }
 
 fn number<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
-    let value = parser.previous().slice.parse::<f32>().unwrap();
+    let value = parser.previous.as_ref().unwrap().slice.parse::<f32>().unwrap();
 }
 
 fn binary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
-    let operator_type = parser.previous().kind.clone();
+    let operator_type = parser.previous.as_ref().unwrap().kind.clone();
     let rule = get_rule(operator_type);
     //parser.parse_precedence((Precedenc)(rule-> precedence + 1));
 
@@ -72,7 +77,7 @@ fn binary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut S
 }
 
 fn unary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
-    let operator_type = parser.previous().kind.clone();
+    let operator_type = parser.previous.as_ref().unwrap().kind.clone();
 
     // Compile the operand
     parser.parse_precedence(Precedence::PREC_UNARY, scanner);
@@ -85,8 +90,8 @@ fn unary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Sc
 }
 
 struct Parser<'source, 'chunk> {
-    current: Option<&'source Token<'source>>,
-    previous: Option<&'source Token<'source>>,
+    current: Option<Token<'source>>,
+    previous: Option<Token<'source>>,
     had_error: bool,
     panic_mode: bool,
     compiling_chunk: &'chunk mut Chunk,
@@ -103,40 +108,44 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         }
     }
 
-    fn previous(&self) -> &'source Token<'source> {
-        self.previous.unwrap()
-    }
-
-    fn current(&self) -> &'source Token<'source> {
-        self.current.unwrap()
-    }
+    // fn previous(&self) -> &Token<'source> {
+    //     self.previous.as_ref().unwrap()
+    // }
+    //
+    // fn current(&self) -> &Token<'source> {
+    //     self.current.as_ref().unwrap()
+    // }
 
     // removed 'source form &mut Scanner
     fn advance(&mut self, scanner: &mut Scanner<'source>) {
         self.previous = self.current.take();
 
         loop {
-            // TODO: add the advance back
-            let token: Token<'source> = scanner.scan_token();
-            if token.kind != TokenKind::TOKEN_ERROR {
+            self.current = Some(scanner.scan_token());
+            if self.current.as_ref().unwrap().kind != TokenKind::TOKEN_ERROR {
                 break;
             } else {
-                self.error_at_current(token.slice);
+                self.error_at(ErrorAt::Current);
             }
         }
     }
 
-    fn error_at_current(&mut self, message: &'source str) {
-        let token = self.current();
-        self.error_at(&token, message);
-    }
+    // fn error_at_current(&mut self, message: &'source str) {
+    //     let token = self.current.as_ref().unwrap();
+    //     self.error_at(token, message);
+    // }
+    //
+    // fn error_at_prev(&mut self, message: &'source str) {
+    //     let token = self.previous.as_ref().unwrap();
+    //     self.error_at(token, message);
+    // }
 
-    fn error_at_prev(&mut self, message: &'source str) {
-        let token = self.previous();
-        self.error_at(&token, message);
-    }
+    fn error_at(&mut self, error_at: ErrorAt) {
+        let token = match error_at {
+            ErrorAt::Current => { self.current.as_ref().unwrap() }
+            ErrorAt::Before => { self.previous.as_ref().unwrap() }
+        };
 
-    fn error_at(&mut self, token: &Token, message: &'source str) {
         if self.panic_mode { return; }
         self.panic_mode = true;
         eprint!("[line {}] Error", token.line);
@@ -147,17 +156,17 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
             eprint!(" at '{}'", token.slice);
         }
 
-        eprintln!(": {}", message);
+        eprintln!(": {}", token.slice);
         self.had_error = true;
     }
 
     fn consume(&mut self, kind: TokenKind, message: &'source str, scanner: &mut Scanner<'source>) {
-        if self.current().kind == kind {
+        if self.current.as_ref().unwrap().kind == kind {
             self.advance(scanner);
             return;
         }
 
-        self.error_at_current(message);
+        self.error_at(ErrorAt::Current);
     }
 
     fn expression(&mut self, scanner: &mut Scanner<'source>) {
@@ -165,18 +174,18 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
     }
 
     fn parse_precedence(&mut self, precedence: Precedence, scanner: &mut Scanner<'source>) {
-        let prev = self.previous().kind.clone();
+        let prev = self.previous.as_ref().unwrap().kind.clone();
 
         self.advance(scanner);
         let prefix_rule = get_rule(prev).prefix;
         if let Some(rule) = prefix_rule {
             rule(self, scanner);
 
-            let current = self.current().kind.clone();
+            let current = self.current.as_ref().unwrap().kind.clone();
             while precedence <= get_rule(current).precedence {
                 self.advance(scanner);
 
-                let prev = self.previous().kind.clone();
+                let prev = self.previous.as_ref().unwrap().kind.clone();
                 let infix_rule = get_rule(prev).infix;
                 if let Some(rule) = infix_rule {
                     rule(self, scanner);
@@ -211,7 +220,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
     }
 
     fn emit_byte(&mut self, opcode: OpCode) {
-        let line = self.previous().line as usize;
+        let line = self.previous.as_ref().unwrap().line as usize;
         self.compiling_chunk.write_chunk(opcode, line);
     }
 

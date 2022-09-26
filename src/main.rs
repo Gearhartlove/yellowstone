@@ -29,7 +29,8 @@ fn main() {
 fn run_file(mut vm: VM, path: &String) {
     let source = fs::read_to_string(path)
         .expect(format!("The file at {path} does not exist").as_str());
-    
+
+    println!("{source}");
     let result = vm.interpret(&source);
     
     // couldo: custom exit 'enums'
