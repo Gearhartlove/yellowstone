@@ -32,7 +32,7 @@ pub struct VM {
 impl VM {
     pub const DEBUG_EXECUTION_TRACING: bool = true;
 
-    pub fn interpret(&mut self, source: &String) -> Result<InterpretOk, InterpretError> {
+    pub fn interpret(&mut self, source: &String) -> Result<Option<f32>, InterpretError> {
         let result = compile(source);
         match result {
             Err(_) => {
@@ -57,7 +57,7 @@ impl VM {
     }
 
     //Q: what happens when there are multiple chunks?
-    pub fn run(&mut self) -> Result<InterpretOk, InterpretError> {
+    pub fn run(&mut self) -> Result<Option<f32>, InterpretError> {
         // if debug flag enabled, print each instruction before execution
         if VM::DEBUG_EXECUTION_TRACING {
             println!("           ");
@@ -74,11 +74,13 @@ impl VM {
             match instruction {
                 OP_RETURN => {
                     if let Some(v) = self.stack.pop() {
-                        println!("{}", v);
+                        println!("chunk result: {}", v);
+                        return Ok(Some(v));
                     } else {
-                        println!("Stack is empty, nothing to pop")
+                        println!("Stack is empty, nothing to pop");
+                        return Ok(None);
                     }
-                    intepret_ok = true;
+                    // intepret_ok = true;
                 }
                 OP_CONSTANT(c) => {
                     let c = c.clone();
@@ -110,9 +112,9 @@ impl VM {
                 }
             };
 
-            if intepret_ok {
-                return Ok(INTERPRET_OK);
-            }
+            // if intepret_ok {
+            //     return Ok(INTERPRET_OK);
+            // }
         }
     }
 

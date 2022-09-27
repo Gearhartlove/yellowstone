@@ -182,12 +182,15 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
     }
 
     fn consume(&mut self, kind: TokenKind, message: &'source str, scanner: &mut Scanner<'source>) {
-        if self.current.as_ref().unwrap().kind == kind {
-            self.advance(scanner);
-            return;
+        match self.current.as_ref().unwrap().kind {
+            kind => {
+                self.advance(scanner);
+                return;
+            },
+            _ => {
+                self.error_at(ErrorAt::Current);
+            },
         }
-
-        self.error_at(ErrorAt::Current);
     }
 
     fn expression(&mut self, scanner: &mut Scanner<'source>) {

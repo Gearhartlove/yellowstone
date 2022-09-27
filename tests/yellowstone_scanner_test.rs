@@ -14,8 +14,28 @@ fn tokenizer_basic_test() {
 }
 
 #[test]
+fn tokenizer_paren_test() {
+    assert_tokens_are!("(1)", TOKEN_LEFT_PAREN, TOKEN_NUMBER, TOKEN_RIGHT_PAREN, TOKEN_EOF);
+}
+
+#[test]
 fn tokenizer_additive_test() {
     assert_tokens_are!("1 + 1", TOKEN_NUMBER, TOKEN_PLUS, TOKEN_NUMBER, TOKEN_EOF);
+}
+
+#[test]
+fn tokenizer_subtractive_test() {
+    assert_tokens_are!("1 - 1", TOKEN_NUMBER, TOKEN_MINUS, TOKEN_NUMBER, TOKEN_EOF);
+}
+
+#[test]
+fn tokenizer_multiply_test() {
+    assert_tokens_are!("1 * 1", TOKEN_NUMBER, TOKEN_STAR, TOKEN_NUMBER, TOKEN_EOF);
+}
+
+#[test]
+fn tokenizer_divide_test() {
+    assert_tokens_are!("1 / 1", TOKEN_NUMBER, TOKEN_SLASH, TOKEN_NUMBER, TOKEN_EOF);
 }
 
 #[test]

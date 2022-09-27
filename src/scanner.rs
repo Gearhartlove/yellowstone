@@ -219,7 +219,7 @@ impl<'source> Scanner<'source> {
     }
 
     pub fn expect(&self, expected: &'source str) -> bool {
-        if let Some(peek) = self.peek() {
+        if let Some(peek) = self.peek_next() {
             if peek != expected {
                 return false;
             }

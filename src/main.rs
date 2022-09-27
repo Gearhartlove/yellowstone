@@ -33,8 +33,6 @@ fn run_file(mut vm: VM, path: &String) {
     println!("{source}");
     let result = vm.interpret(&source);
     
-    // couldo: custom exit 'enums'
-    // ref: https://blog.rust-lang.org/2022/05/19/Rust-1.61.0.html
     match result {
         Err(e) => { println!("{:?}", e) },
         Ok(_) => {},
