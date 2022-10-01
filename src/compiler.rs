@@ -88,6 +88,12 @@ fn binary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut S
     parser.parse_precedence(Precedence::get_enum(prec), scanner);
 
     match operator_type {
+        TokenKind::TOKEN_BANG_EQUAL => {parser.emit_bytes(OpCode::OP_EQUAL, OpCode::OP_NOT)}
+        TokenKind::TOKEN_EQUAL_EQUAL=> {parser.emit_byte(OpCode::OP_EQUAL)}
+        TokenKind::TOKEN_GREATER => {parser.emit_byte(OpCode::OP_GREATER)}
+        TokenKind::TOKEN_GREATER_EQUAL => {parser.emit_bytes(OpCode::OP_LESS, OpCode::OP_NOT)}
+        TokenKind::TOKEN_LESS => {parser.emit_byte(OpCode::OP_LESS)}
+        TokenKind::TOKEN_LESS_EQUAL => {parser.emit_bytes(OpCode::OP_GREATER, OpCode::OP_NOT)}
         TokenKind::TOKEN_PLUS => { parser.emit_byte(OpCode::OP_ADD) },
         TokenKind::TOKEN_MINUS => { parser.emit_byte(OpCode::OP_SUBTRACT) },
         TokenKind::TOKEN_STAR => { parser.emit_byte(OpCode::OP_MULTIPLY) },
@@ -114,6 +120,7 @@ fn unary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Sc
     // Emit the operator instruction
     match operator_type {
         TokenKind::TOKEN_MINUS => { parser.emit_byte(OpCode::OP_NEGATE); }
+        TokenKind::TOKEN_BANG => { parser.emit_byte(OpCode::OP_NOT); }
         _ => {}
     }
 }
@@ -305,14 +312,14 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
             precedence: Precedence::PREC_FACTOR
         }}
         TOKEN_BANG => { ParseRule {
-            prefix: None,
+            prefix: Some(&unary),
             infix: None,
             precedence: Precedence::PREC_NONE
         }}
         TOKEN_BANG_EQUAL => { ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::PREC_NONE
+            infix: Some(&binary),
+            precedence: Precedence::PREC_EQUALITY
         }}
         TOKEN_EQUAL => { ParseRule {
             prefix: None,
@@ -321,28 +328,28 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
         }}
         TOKEN_EQUAL_EQUAL => { ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::PREC_NONE
+            infix: Some(&binary),
+            precedence: Precedence::PREC_EQUALITY
         }}
         TOKEN_GREATER => { ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::PREC_NONE
+            infix: Some(&binary),
+            precedence: Precedence::PREC_COMPARISON
         }}
         TOKEN_GREATER_EQUAL => { ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::PREC_NONE
+            infix: Some(&binary),
+            precedence: Precedence::PREC_COMPARISON
         }}
         TOKEN_LESS => { ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::PREC_NONE
+            infix: Some(&binary),
+            precedence: Precedence::PREC_COMPARISON
         }}
         TOKEN_LESS_EQUAL => { ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::PREC_NONE
+            infix: Some(&binary),
+            precedence: Precedence::PREC_COMPARISON
         }}
         TOKEN_IDENTIFIER => { ParseRule {
             prefix: None,

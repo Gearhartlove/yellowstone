@@ -9,7 +9,6 @@ use std::fs;
 mod chunk;
 mod compiler;
 mod debug;
-mod op_code;
 mod vm;
 mod scanner;
 mod util;

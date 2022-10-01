@@ -50,23 +50,35 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
         OP_FALSE => {
             simple_instruction("OP_FALSE", offset)
         },
+        OP_EQUAL => {
+            simple_instruction("OP_EQUAL", offset)
+        }
+        OP_GREATER => {
+            simple_instruction("OP_GREATER", offset)
+        },
+        OP_LESS => {
+            simple_instruction("OP_LESS", offset)
+        }
         OP_RETURN => {
-            simple_instruction("OP_RETURN", offset);
+            simple_instruction("OP_RETURN", offset)
         }
         OP_NEGATE => {
-            simple_instruction("OP_NEGATE", offset);
+            simple_instruction("OP_NEGATE", offset)
+        }
+        OP_NOT => {
+            simple_instruction("OP_NOT", offset)
         }
         OP_ADD => {
-            simple_instruction("OP_ADD", offset);
+            simple_instruction("OP_ADD", offset)
         }
         OP_SUBTRACT => {
-            simple_instruction("OP_SUBTRACT", offset);
+            simple_instruction("OP_SUBTRACT", offset)
         }
         OP_MULTIPLY => {
-            simple_instruction("OP_MULTIPLY", offset);
+            simple_instruction("OP_MULTIPLY", offset)
         }
         OP_DIVIDE => {
-            simple_instruction("OP_DIVIDE", offset);
+            simple_instruction("OP_DIVIDE", offset)
         }
         _ => { todo!() }
     }

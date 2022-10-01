@@ -53,6 +53,11 @@ impl VM {
         self.stack.get(self.stack.len() - from_top - 1) //todo: check if -1 is a bug
     }
 
+    // nil and false are falsey and every other value behaves like true
+    fn is_falsey(value: Value) -> bool {
+        Value::is_nil(&value) || (Value::is_bool(&value) && !Value::as_bool(&value).unwrap())
+    }
+
     //Q: what happens when there are multiple chunks?
     pub fn run(&mut self) -> Result<Option<Value>, InterpretError> {
         // if debug flag enabled, print each instruction before execution
@@ -67,8 +72,7 @@ impl VM {
 
         loop {
             let instruction = self.read_byte();
-            let mut intepret_ok: bool = false;
-            match instruction {
+            let result = match instruction {
                 OP_RETURN => {
                     if let Some(v) = self.stack.pop() {
                         println!("chunk result: {:?}", v);
@@ -77,12 +81,12 @@ impl VM {
                         println!("Stack is empty, nothing to pop");
                         return Ok(None);
                     }
-                    // intepret_ok = true;
                 }
                 OP_CONSTANT(c) => {
                     let c = c.clone();
 
                     self.stack.push(c);
+                    Ok(())
                 }
                 OP_NEGATE => {
                     if !Value::is_number(self.peek(0).unwrap()) {
@@ -94,33 +98,58 @@ impl VM {
                     let pop_val = self.stack.pop().unwrap();
                     let mut number = pop_val.as_number().unwrap();
                     number *= -1.;
-                    self.stack.push(Value::number_value(number));
+                    self.push(Value::number_value(number));
+                    Ok(())
+                }
+                OP_NOT => {
+                    let val = self.pop();
+                    self.push(Value::bool_val(VM::is_falsey(val)));
+                    Ok(())
                 }
                 OP_NIL => {
-                    self.push(Value::nil_value())
-                },
+                    self.push(Value::nil_value());
+                    Ok(())
+                }
                 OP_TRUE => {
-                    self.push(Value::bool_val(true))
+                    self.push(Value::bool_val(true));
+                    Ok(())
                 },
+                OP_EQUAL => {
+                    let a: Value = self.pop();
+                    let b: Value = self.pop();
+                    self.push(Value::bool_val(Value::values_equal(a,b)));
+                    Ok(())
+                }
                 OP_FALSE => {
-                    self.push(Value::bool_val(false))
+                    self.push(Value::bool_val(false));
+                    Ok(())
                 },
+                OP_GREATER => {
+                    binary_operator(self, '>')
+                }
+                OP_LESS => {
+                    binary_operator(self, '<')
+                }
                 OP_ADD => {
-                    binary_operator(self, '+');
+                    binary_operator(self, '+')
                 }
                 OP_SUBTRACT => {
-                    binary_operator(self, '-');
+                    binary_operator(self, '-')
                 }
                 OP_MULTIPLY => {
-                    binary_operator(self, '*');
+                    binary_operator(self, '*')
                 }
                 OP_DIVIDE => {
-                    binary_operator(self, '/');
+                    binary_operator(self, '/')
                 }
                 OP_DEBUG => {
                     unimplemented!()
                 }
             };
+
+            if let Err(e) = result {
+                return Err(e);
+            }
 
             // if intepret_ok {
             //     return Ok(INTERPRET_OK);
@@ -161,6 +190,8 @@ fn binary_operator(vm: &mut VM, op: char) -> Result<(), InterpretError> {
         '-' => vm.stack.push(Value::number_value(a - b)),
         '/' => vm.stack.push(Value::number_value(a / b)),
         '*' => vm.stack.push(Value::number_value(a * b)),
+        '>' => vm.stack.push(Value::bool_val(a > b)),
+        '<' => vm.stack.push(Value::bool_val(a < b)),
         _ => {
             println!("invalid operation {}", op)
         }

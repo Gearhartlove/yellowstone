@@ -64,7 +64,7 @@ pub union ValueUnion {
 }
 
 #[repr(u32)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum ValueKind {
     ValBool,
     ValNil,
@@ -72,6 +72,17 @@ pub enum ValueKind {
 }
 
 impl Value {
+    pub fn values_equal(a: Value, b: Value) -> bool {
+        if a.kind != b.kind {
+            return false
+        }
+        return match a.kind {
+            ValueKind::ValBool => { Value::as_bool(&a) == Value::as_bool(&b) }
+            ValueKind::ValNil => { true }
+            ValueKind::ValNumber => { Value::as_number(&a) == Value::as_number(&b) }
+        }
+    }
+
     fn print_value(self) {
         match self.kind {
             ValueKind::ValBool => { println!("{}", self.as_bool().unwrap()) },
