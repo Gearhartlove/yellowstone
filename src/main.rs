@@ -14,6 +14,7 @@ mod vm;
 mod scanner;
 mod util;
 mod value;
+mod error;
 
 
 fn main() {

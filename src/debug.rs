@@ -1,7 +1,6 @@
 use crate::chunk::get_line;
-use crate::op_code::OpCode;
-use crate::op_code::OpCode::*;
 use crate::chunk::*;
+use crate::chunk::OpCode::*;
 
 pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
     println!("== {} ==", name);
@@ -18,11 +17,8 @@ fn simple_instruction(name: &str, offset: &mut u32) {
 }
 
 fn constant_instruction(instruction: &OpCode, offset: &mut u32) {
-    if let OP_CONSTANT(constant) = instruction {
-        println!("OP_CONSTANT {constant}");
-        *offset += 1;
-    } else if let OP_CONSTANT_LONG(constant) = instruction {
-        println!("OP_CONSTANT {constant}");
+    if let OP_CONSTANT(const_val) = instruction {
+        println!("OP_CONSTANT {:?}", const_val);
         *offset += 1;
     } else {
         panic!(
@@ -42,12 +38,18 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
     }
 
     match instruction {
-        OP_CONSTANT_LONG(constant) => {
-            constant_instruction(instruction, offset);
-        }
-        OP_CONSTANT(constant) => {
-            constant_instruction(instruction, offset);
-        }
+        OP_CONSTANT(_) => {
+            constant_instruction(instruction, offset)
+        },
+        OP_TRUE => {
+            simple_instruction("OP_TRUE", offset)
+        },
+        OP_NIL => {
+            simple_instruction("OP_NIL", offset)
+        },
+        OP_FALSE => {
+            simple_instruction("OP_FALSE", offset)
+        },
         OP_RETURN => {
             simple_instruction("OP_RETURN", offset);
         }
@@ -66,6 +68,6 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
         OP_DIVIDE => {
             simple_instruction("OP_DIVIDE", offset);
         }
-        OP_DEBUG => todo!(),
+        _ => { todo!() }
     }
 }

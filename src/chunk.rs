@@ -1,8 +1,25 @@
-use crate::op_code::OpCode;
+use crate::value::Value;
+
+#[allow(non_camel_case_types)]
+#[derive(Debug)]
+pub enum OpCode {
+    OP_CONSTANT(Value),
+    OP_NIL,
+    OP_TRUE,
+    OP_FALSE,
+    OP_RETURN,
+    OP_DEBUG,
+    OP_NEGATE,
+    //binary
+    OP_ADD,
+    OP_SUBTRACT,
+    OP_MULTIPLY,
+    OP_DIVIDE,
+}
 
 pub struct Chunk {
     pub code: Vec<OpCode>,
-    pub constants: Vec<f32>,
+    pub constants: Vec<Value>,
     pub lines: String,
 }
 
@@ -19,10 +36,10 @@ impl Default for Chunk {
 impl Chunk {
     pub fn write_chunk(&mut self, op: OpCode, line: usize) {
         self.code.push(op);
-        //encode(self, line);
+        //encode(self, line); // todo: fix encoding for debug output
     }
 
-    pub fn add_constant(&mut self, constant: f32) -> usize {
+    pub fn add_constant(&mut self, constant: Value) -> usize {
         self.constants.push(constant);
 
         // return the index where the constant was appended so that we can
@@ -119,7 +136,6 @@ pub fn get_line(offset: &mut u32, lines: &String) -> String {
 #[allow(unused_imports)]
 mod tests {
     use crate::chunk::*;
-    use crate::op_code::OpCode;
     use crate::chunk::*;
 
     #[test]

@@ -1,15 +1,9 @@
-use crate::op_code::{OpCode, OpCode::*};
-use crate::chunk::Chunk;
+use crate::chunk::{Chunk, OpCode::*, OpCode};
 use crate::compiler::compile;
 use crate::debug::disassemble_chunk;
-use crate::vm::InterpretOk::INTERPRET_OK;
-
-#[allow(non_camel_case_types)]
-#[derive(PartialEq, Debug)]
-pub enum InterpretError {
-    INTERPRET_COMPILE_ERROR,
-    INTERPRET_RUNTIME_ERROR,
-}
+use crate::error::InterpretError;
+use crate::error::InterpretError::INTERPRET_RUNTIME_ERROR;
+use crate::value::{Value};
 
 #[allow(non_camel_case_types)]
 #[derive(PartialEq)]
@@ -26,13 +20,13 @@ pub struct VM {
     pub chunk: Chunk,
     pub ip: usize,
     // instruction pointer, points at bytecode about to be executed
-    pub stack: Vec<f32>,
+    pub stack: Vec<Value>,
 }
 
 impl VM {
     pub const DEBUG_EXECUTION_TRACING: bool = true;
 
-    pub fn interpret(&mut self, source: &String) -> Result<Option<f32>, InterpretError> {
+    pub fn interpret(&mut self, source: &String) -> Result<Option<Value>, InterpretError> {
         let result = compile(source);
         match result {
             Err(_) => {
@@ -49,20 +43,23 @@ impl VM {
         }
     }
 
-    fn push(&mut self, value: f32) {
+    fn push(&mut self, value: Value) {
         self.stack.push(value);
     }
-    fn pop(&mut self) -> f32 {
+    fn pop(&mut self) -> Value {
         self.stack.pop().unwrap()
+    }
+    fn peek(&mut self, from_top: usize) -> Option<&Value> {
+        self.stack.get(self.stack.len() - from_top - 1) //todo: check if -1 is a bug
     }
 
     //Q: what happens when there are multiple chunks?
-    pub fn run(&mut self) -> Result<Option<f32>, InterpretError> {
+    pub fn run(&mut self) -> Result<Option<Value>, InterpretError> {
         // if debug flag enabled, print each instruction before execution
         if VM::DEBUG_EXECUTION_TRACING {
             println!("           ");
             for val in self.stack.iter() {
-                println!("[{}]", val);
+                println!("[{:?}]", val); // todo: refactor to not use debug
             }
             disassemble_chunk(&self.chunk, "chunk");
             println!();
@@ -74,8 +71,8 @@ impl VM {
             match instruction {
                 OP_RETURN => {
                     if let Some(v) = self.stack.pop() {
-                        println!("chunk result: {}", v);
-                        return Ok(Some(v));
+                        println!("chunk result: {:?}", v);
+                        return Ok(Some(v)); // todo: refactor to not use debug
                     } else {
                         println!("Stack is empty, nothing to pop");
                         return Ok(None);
@@ -84,14 +81,30 @@ impl VM {
                 }
                 OP_CONSTANT(c) => {
                     let c = c.clone();
+
                     self.stack.push(c);
                 }
                 OP_NEGATE => {
+                    if !Value::is_number(self.peek(0).unwrap()) {
+                        // todo: look at how the book handles 'runtimeErrors'
+                        // todo: in the 'values' chapter of the book
+                        eprintln!("Operand must be a number.");
+                        return Err(INTERPRET_RUNTIME_ERROR);
+                    }
                     let pop_val = self.stack.pop().unwrap();
-                    self.stack.push(
-                        pop_val * -1., // negating
-                    );
+                    let mut number = pop_val.as_number().unwrap();
+                    number *= -1.;
+                    self.stack.push(Value::number_value(number));
                 }
+                OP_NIL => {
+                    self.push(Value::nil_value())
+                },
+                OP_TRUE => {
+                    self.push(Value::bool_val(true))
+                },
+                OP_FALSE => {
+                    self.push(Value::bool_val(false))
+                },
                 OP_ADD => {
                     binary_operator(self, '+');
                 }
@@ -103,9 +116,6 @@ impl VM {
                 }
                 OP_DIVIDE => {
                     binary_operator(self, '/');
-                }
-                OP_CONSTANT_LONG(_) => {
-                    unimplemented!()
                 }
                 OP_DEBUG => {
                     unimplemented!()
@@ -137,16 +147,23 @@ impl VM {
     }
 }
 
-fn binary_operator(vm: &mut VM, op: char) {
-    let b: f32 = vm.stack.pop().unwrap();
-    let a: f32 = vm.stack.pop().unwrap();
+// todo: fix for binary operator, add possibility for runtime error
+fn binary_operator(vm: &mut VM, op: char) -> Result<(), InterpretError> {
+    if !Value::is_number(vm.peek(0).unwrap()) || !Value::is_number(vm.peek(1).unwrap()) {
+        // todo: runtime error
+        eprintln!("Operands must be numbers.");
+        return Err(INTERPRET_RUNTIME_ERROR);
+    }
+    let b: f32 = Value::as_number(&vm.stack.pop().unwrap()).unwrap();
+    let a: f32 = Value::as_number(&vm.stack.pop().unwrap()).unwrap();
     match op {
-        '+' => vm.stack.push(a + b),
-        '-' => vm.stack.push(a - b),
-        '/' => vm.stack.push(a / b),
-        '*' => vm.stack.push(a * b),
+        '+' => vm.stack.push(Value::number_value(a + b)),
+        '-' => vm.stack.push(Value::number_value(a - b)),
+        '/' => vm.stack.push(Value::number_value(a / b)),
+        '*' => vm.stack.push(Value::number_value(a * b)),
         _ => {
             println!("invalid operation {}", op)
         }
     }
+    Ok(())
 }

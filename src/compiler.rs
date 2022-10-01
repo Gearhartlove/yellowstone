@@ -1,8 +1,8 @@
-use crate::chunk::Chunk;
+use crate::chunk::{Chunk, OpCode};
 use crate::debug::disassemble_chunk;
-use crate::op_code::{OpCode};
 use crate::scanner::{Scanner, Token, TokenKind};
 use crate::scanner::TokenKind::*;
+use crate::value::Value;
 
 const DEBUG_PRINT_CODE: bool = false;
 
@@ -78,7 +78,7 @@ fn grouping<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut
 
 fn number<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
     let value = parser.previous.as_ref().unwrap().slice.parse::<f32>().unwrap();
-    parser.emit_constant(value);
+    parser.emit_constant(Value::number_value(value));
 }
 
 fn binary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
@@ -93,6 +93,15 @@ fn binary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut S
         TokenKind::TOKEN_STAR => { parser.emit_byte(OpCode::OP_MULTIPLY) },
         TokenKind::TOKEN_SLASH => { parser.emit_byte(OpCode::OP_DIVIDE) },
         _ => {}
+    }
+}
+
+fn literal<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
+    match parser.previous.as_ref().unwrap().kind {
+        TOKEN_TRUE => { parser.emit_byte(OpCode::OP_TRUE) },
+        TOKEN_FALSE => { parser.emit_byte(OpCode::OP_FALSE) },
+        TOKEN_NIL => { parser.emit_byte(OpCode::OP_NIL) },
+        _ => {} // unreachable
     }
 }
 
@@ -128,15 +137,6 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         }
     }
 
-    // fn previous(&self) -> &Token<'source> {
-    //     self.previous.as_ref().unwrap()
-    // }
-    //
-    // fn current(&self) -> &Token<'source> {
-    //     self.current.as_ref().unwrap()
-    // }
-
-    // removed 'source form &mut Scanner
     fn advance(&mut self, scanner: &mut Scanner<'source>) {
         self.previous = self.current.take();
 
@@ -150,16 +150,6 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
             }
         }
     }
-
-    // fn error_at_current(&mut self, message: &'source str) {
-    //     let token = self.current.as_ref().unwrap();
-    //     self.error_at(token, message);
-    // }
-    //
-    // fn error_at_prev(&mut self, message: &'source str) {
-    //     let token = self.previous.as_ref().unwrap();
-    //     self.error_at(token, message);
-    // }
 
     fn error_at(&mut self, error_at: ErrorAt) {
         let token = match error_at {
@@ -233,7 +223,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.emit_byte(OpCode::OP_RETURN);
     }
 
-    fn emit_constant(&mut self, value: f32) {
+    fn emit_constant(&mut self, value: Value) {
         // check to make sure I don't have the max
         // constants in a chunk
         let size = self.compiling_chunk.add_constant(value);
@@ -385,7 +375,7 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
             precedence: Precedence::PREC_NONE
         }}
         TOKEN_FALSE => { ParseRule {
-            prefix: None,
+            prefix: Some(&literal),
             infix: None,
             precedence: Precedence::PREC_NONE
         }}
@@ -405,7 +395,7 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
             precedence: Precedence::PREC_NONE
         }}
         TOKEN_NIL => { ParseRule {
-            prefix: None,
+            prefix: Some(&literal),
             infix: None,
             precedence: Precedence::PREC_NONE
         }}
@@ -435,7 +425,7 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
             precedence: Precedence::PREC_NONE
         }}
         TOKEN_TRUE => { ParseRule {
-            prefix: None,
+            prefix: Some(&literal),
             infix: None,
             precedence: Precedence::PREC_NONE
         }}

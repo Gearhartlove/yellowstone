@@ -1,14 +1,13 @@
-use std::fmt;
+// #[derive(Clone, Copy)]
+// pub enum YSErrorType {
+//     InterpretError,
+//     CompileError,
+//     RuntimeError,
+// }
 
-type CompilerResult<T> = std::result::Result<_, T>;
-
-
-#[derive(Debug, Clone)]
-struct InterpretCompileError;
-#[derive(Debup, Clone)]
-struct InterpretRuntimeError;
-
-
-// impl Display
-impl fmt::Display for InterpretCompileError {
+#[allow(non_camel_case_types)]
+#[derive(PartialEq, Debug)]
+pub enum InterpretError {
+    INTERPRET_COMPILE_ERROR,
+    INTERPRET_RUNTIME_ERROR,
 }
