@@ -13,6 +13,7 @@ mod op_code;
 mod vm;
 mod scanner;
 mod util;
+mod value;
 
 
 fn main() {
