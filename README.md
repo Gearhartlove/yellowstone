@@ -1,19 +1,4 @@
-# yellowstone
-Homemade Virtual Machine 
+# yellowstone vm
+### a handcrafted virtual machine 
+**Code** --(Scanner)--> **Tokens** --(Compiler)--> **Bytecode** --(Stack-based Runtime)--> **Interpretation** 
 
-Grammer: 
-
-```ebnf
-expression    ->  literal
-              |   unary
-              |   binary
-              |   grouping  ;
-              
-literal       ->  NUMBER | STRING | "true" | false | "nil"  ;
-grouping      ->  "(" expression ")"  ;
-unary         ->  ( "-" | "!" ) expression  ;
-binary        ->  expression operator expression  ;
-operator      ->  "==" | ">=" | "<=" | "<" | ">" | "=" | "-"  | "+"  | "*"  | "/"  ;
-
-
-```
