@@ -1,5 +1,6 @@
 use crate::value::Value;
 
+/// Yellowstone VM byte-code instructions.
 #[allow(non_camel_case_types)]
 #[derive(Debug)]
 pub enum OpCode {
@@ -20,6 +21,7 @@ pub enum OpCode {
     OP_DIVIDE,
 }
 
+/// Contains the bytecode instructions as well as constants created from parsing tokens.
 pub struct Chunk {
     pub code: Vec<OpCode>,
     pub constants: Vec<Value>,
@@ -37,16 +39,15 @@ impl Default for Chunk {
 }
 
 impl Chunk {
+    /// Adds an opcode to a chunk.
     pub fn write_chunk(&mut self, op: OpCode, line: usize) {
         self.code.push(op);
-        //encode(self, line); // todo: fix encoding for debug output
+        encode(self, line);
     }
 
+    /// Adds a constant to the chunk. Returns the index of that constant to locate later.
     pub fn add_constant(&mut self, constant: Value) -> usize {
         self.constants.push(constant);
-
-        // return the index where the constant was appended so that we can
-        // locate that constant later
         let index = self.constants.len() - 1;
         return index;
     }
@@ -54,51 +55,56 @@ impl Chunk {
 
 /// Each line number is separated by a '\_', the numbers in between the '\_' are the number of
 /// operations on that line.
-/// Look at tests for example.
+/// Look at 'chunk_tests' module examples.
 fn encode(chunk: &mut Chunk, curr_line: usize) {
-    // determine if I am on a new line by comparing the length of the lines with the current line number
+    fn new_line(chunk: &mut Chunk, curr_line: usize) {
+        chunk.lines.push_str("1_");
+    }
+
+    // Calculate the current line count.
     let line_count = chunk
         .lines
         .chars()
         .filter(|x| x == &'_')
-        .map(|x| x)
         .collect::<Vec<char>>()
         .len();
-    let same_line: bool = line_count == curr_line;
-    if !same_line {
-        // pop leading '_'
-        chunk.lines.pop();
-        // get the number by popping then reversing
-        let mut num = "".to_string();
-        println!("{}", num);
-        loop {
-            match chunk.lines.pop() {
-                None => {
-                    break;
-                }
-                Some(c) => {
-                    if c == '_' {
-                        chunk.lines.push('_');
+
+    if line_count == 0 {
+        new_line(chunk, curr_line);
+    }
+    else {
+        let same_line: bool = line_count == curr_line;
+        if !same_line {
+            new_line(chunk, curr_line);
+        }
+        else if same_line {
+            chunk.lines.pop();
+            let mut num = "".to_string();
+            println!("{}", num);
+            loop {
+                match chunk.lines.pop() {
+                    None => {
                         break;
                     }
-                    num.push(c)
+                    Some(c) => {
+                        if c == '_' {
+                            chunk.lines.push('_');
+                            break;
+                        }
+                        num.push(c)
+                    }
                 }
             }
+            let mut num = num.parse::<usize>().unwrap();
+            num += 1;
+            let num = num.to_string();
+            chunk.lines.push_str(&num);
+            chunk.lines.push('_');
         }
-        let mut num = num.parse::<usize>().unwrap();
-        num += 1;
-        let num = num.to_string();
-        // pushing the number to lines
-        chunk.lines.push_str(&num);
-        // pushing the '_' back to lines
-        chunk.lines.push('_');
-    } else {
-        // push "1_"
-        chunk.lines.push_str("1_");
     }
 }
 
-// todo: calculate the line number of the offset before for comparison
+/// Gets the line of a given an instruction 'offset'.
 pub fn get_line(offset: &mut u32, lines: &String) -> String {
     if *offset == 0 {
         return "1".to_string();
@@ -106,7 +112,7 @@ pub fn get_line(offset: &mut u32, lines: &String) -> String {
 
     let line_numb = |offset: &mut u32| -> String {
         let mut split = lines.split('_').collect::<Vec<&str>>();
-        split.pop(); // remove ending ""
+        split.pop();
         let split = split
             .into_iter()
             .map(|x| x.parse::<u32>().unwrap())
@@ -133,33 +139,46 @@ pub fn get_line(offset: &mut u32, lines: &String) -> String {
     };
 }
 
-// #################################################################################################
-// Testing
+// Testing that the chunk.lines formatting is correct and ensuring each instruction is associated
+// with the correct line.
+mod chunk_tests {
+    use crate::chunk::*;
 
-#[allow(unused_imports)]
-mod tests {
-    use crate::chunk::*;
-    use crate::chunk::*;
+    fn write_chunk(chunk: &mut Chunk, instruction: OpCode, line: usize) {
+        if line <= 0 {
+            panic!("Line cannot be smaller than 1")
+        }
+
+        chunk.write_chunk(instruction, line)
+    }
+
+    #[test]
+    fn single_line_encode_test() {
+        let chunk = &mut Chunk::default();
+        write_chunk(chunk, OpCode::OP_CONSTANT(Value::number_value(0.)), 1);
+        write_chunk(chunk, OpCode::OP_RETURN, 1);
+        assert_eq!("2_", &chunk.lines);
+    }
 
     #[test]
     fn encode_test() {
-        let chunk = Chunk::default()
-            .write_chunk(OpCode::OP_CONSTANT(0.), 0)
-            .write_chunk(OpCode::OP_CONSTANT(1.), 0)
-            .write_chunk(OpCode::OP_CONSTANT(2.), 1)
-            .write_chunk(OpCode::OP_RETURN, 1);
+        let chunk = &mut Chunk::default();
+        write_chunk(chunk, OpCode::OP_CONSTANT(Value::number_value(0.)), 1);
+        write_chunk(chunk, OpCode::OP_CONSTANT(Value::number_value(1.)), 1);
+        write_chunk(chunk, OpCode::OP_CONSTANT(Value::number_value(2.)), 2);
+        write_chunk(chunk, OpCode::OP_RETURN, 2);
         assert_eq!("2_2_", &chunk.lines);
     }
 
     #[test]
     fn get_line_test() {
-        let chunk = Chunk::default()
-            .write_chunk(OpCode::OP_CONSTANT(0.), 0) // 1
-            .write_chunk(OpCode::OP_CONSTANT(1.), 0) // same
-            .write_chunk(OpCode::OP_CONSTANT(2.), 1) // 2
-            .write_chunk(OpCode::OP_CONSTANT(2.), 1) // same
-            .write_chunk(OpCode::OP_CONSTANT(2.), 1) // same
-            .write_chunk(OpCode::OP_RETURN, 2); // 3
+        let chunk = &mut Chunk::default();
+        write_chunk(chunk, OpCode::OP_CONSTANT(Value::number_value(0.)), 1); // 1
+        write_chunk(chunk, OpCode::OP_CONSTANT(Value::number_value(1.)), 1); // same
+        write_chunk(chunk, OpCode::OP_CONSTANT(Value::number_value(2.)), 2); // 2
+        write_chunk(chunk, OpCode::OP_CONSTANT(Value::number_value(2.)), 2); // same
+        write_chunk(chunk, OpCode::OP_CONSTANT(Value::number_value(2.)), 2); // same
+        write_chunk(chunk, OpCode::OP_RETURN, 3); // 3
 
         assert_eq!("1", get_line(&mut 0, &chunk.lines));
         assert_eq!("same", get_line(&mut 1, &chunk.lines));
