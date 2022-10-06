@@ -80,6 +80,6 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
         OP_DIVIDE => {
             simple_instruction("OP_DIVIDE", offset)
         }
-        _ => { todo!() }
+        _ => {}
     }
 }

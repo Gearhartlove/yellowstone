@@ -26,10 +26,6 @@ impl PartialEq for Value {
             false
         }
     }
-
-    fn ne(&self, other: &Self) -> bool {
-        todo!()
-    }
 }
 
 impl Debug for Value {

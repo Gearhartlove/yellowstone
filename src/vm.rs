@@ -50,7 +50,7 @@ impl VM {
         self.stack.pop().unwrap()
     }
     fn peek(&mut self, from_top: usize) -> Option<&Value> {
-        self.stack.get(self.stack.len() - from_top - 1) //todo: check if -1 is a bug
+        self.stack.get(self.stack.len() - from_top - 1)
     }
 
     // nil and false are falsey and every other value behaves like true
@@ -64,7 +64,7 @@ impl VM {
         if VM::DEBUG_EXECUTION_TRACING {
             println!("           ");
             for val in self.stack.iter() {
-                println!("[{:?}]", val); // todo: refactor to not use debug
+                println!("[{:?}]", val);
             }
             disassemble_chunk(&self.chunk, "chunk");
             println!();
@@ -76,7 +76,7 @@ impl VM {
                 OP_RETURN => {
                     if let Some(v) = self.stack.pop() {
                         println!("chunk result: {:?}", v);
-                        return Ok(Some(v)); // todo: refactor to not use debug
+                        return Ok(Some(v));
                     } else {
                         println!("Stack is empty, nothing to pop");
                         return Ok(None);
@@ -150,10 +150,6 @@ impl VM {
             if let Err(e) = result {
                 return Err(e);
             }
-
-            // if intepret_ok {
-            //     return Ok(INTERPRET_OK);
-            // }
         }
     }
 
@@ -176,7 +172,6 @@ impl VM {
     }
 }
 
-// todo: fix for binary operator, add possibility for runtime error
 fn binary_operator(vm: &mut VM, op: char) -> Result<(), InterpretError> {
     if !Value::is_number(vm.peek(0).unwrap()) || !Value::is_number(vm.peek(1).unwrap()) {
         // todo: runtime error
