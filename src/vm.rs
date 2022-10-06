@@ -55,7 +55,8 @@ impl VM {
 
     // nil and false are falsey and every other value behaves like true
     fn is_falsey(value: Value) -> bool {
-        Value::is_nil(&value) || (Value::is_bool(&value) && !Value::as_bool(&value).unwrap())
+        Value::is_nil(&value)
+            || (Value::is_bool(&value) && !Value::as_bool(&value).unwrap())
     }
 
     //Q: what happens when there are multiple chunks?
@@ -90,8 +91,6 @@ impl VM {
                 }
                 OP_NEGATE => {
                     if !Value::is_number(self.peek(0).unwrap()) {
-                        // todo: look at how the book handles 'runtimeErrors'
-                        // todo: in the 'values' chapter of the book
                         eprintln!("Operand must be a number.");
                         return Err(INTERPRET_RUNTIME_ERROR);
                     }
@@ -102,6 +101,10 @@ impl VM {
                     Ok(())
                 }
                 OP_NOT => {
+                    if Value::is_number(self.peek(0).unwrap()) {
+                        eprintln!("Operand cannot be a number.");
+                        return Err(INTERPRET_RUNTIME_ERROR);
+                    }
                     let val = self.pop();
                     self.push(Value::bool_val(VM::is_falsey(val)));
                     Ok(())
@@ -174,7 +177,6 @@ impl VM {
 
 fn binary_operator(vm: &mut VM, op: char) -> Result<(), InterpretError> {
     if !Value::is_number(vm.peek(0).unwrap()) || !Value::is_number(vm.peek(1).unwrap()) {
-        // todo: runtime error
         eprintln!("Operands must be numbers.");
         return Err(INTERPRET_RUNTIME_ERROR);
     }
