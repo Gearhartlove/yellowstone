@@ -233,7 +233,8 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
     fn emit_constant(&mut self, value: Value) {
         // check to make sure I don't have the max
         // constants in a chunk
-        let size = self.compiling_chunk.add_constant(value);
+        let constant_value = value.clone();
+        let size = self.compiling_chunk.add_constant(constant_value);
         if size > 256 {
             eprint!("Too many constants in one chunk.");
         }

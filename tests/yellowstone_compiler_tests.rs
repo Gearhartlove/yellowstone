@@ -20,7 +20,7 @@ fn compiler_unary() {
     let mut vm = VM::default();
     let source = "1";
     let result = run_code(&mut vm, source);
-    assert_eq!(result, Some(Value::number_value(1.)));
+    assert_eq!(result, Some(Value::number_value(2.)));
 }
 
 #[test]

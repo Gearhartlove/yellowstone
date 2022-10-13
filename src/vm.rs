@@ -75,12 +75,12 @@ impl VM {
             let instruction = self.read_byte();
             let result = match instruction {
                 OP_RETURN => {
-                    if let Some(v) = self.stack.pop() {
+                    return if let Some(v) = self.stack.pop() {
                         println!("chunk result: {:?}", v);
-                        return Ok(Some(v));
+                        Ok(Some(v))
                     } else {
                         println!("Stack is empty, nothing to pop");
-                        return Ok(None);
+                        Ok(None)
                     }
                 }
                 OP_CONSTANT(c) => {

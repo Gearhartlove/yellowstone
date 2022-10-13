@@ -1,11 +1,24 @@
+use std::borrow::Borrow;
 use std::fmt::{Debug, Formatter};
+use std::mem::ManuallyDrop;
+use std::rc::Rc;
 use crate::error::InterpretError;
 
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub struct Value {
     kind: ValueKind,
     u: ValueUnion,
+}
+
+impl Clone for Value {
+    fn clone(&self) -> Self {
+        match self.kind {
+            ValueKind::ValBool => { let b = self.as_bool().unwrap(); Value { kind: ValueKind::ValBool, u: ValueUnion { b } } }
+            ValueKind::ValNil => { Value { kind: ValueKind::ValNil, u: ValueUnion { f: 0. } } }
+            ValueKind::ValNumber => { let f = self.as_number().unwrap(); Value { kind: ValueKind::ValNumber, u: ValueUnion { f } } }
+            ValueKind::ValObj => { let o = self.as_obj().unwrap(); Value { kind: ValueKind::ValObj, u: ValueUnion { o: ManuallyDrop::new(o) } } }
+        }
+    }
 }
 
 impl PartialEq for Value {
@@ -22,11 +35,17 @@ impl PartialEq for Value {
             let a = self.as_bool().unwrap();
             let b = self.as_bool().unwrap();
             a == b
-        } else {
+        } else if self.is_obj() && other.is_obj() {
+            let a = self.as_bool().unwrap();
+            let b = self.as_bool().unwrap();
+            a == b
+        }
+        else {
             false
         }
     }
 }
+
 
 impl Debug for Value {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
@@ -36,15 +55,20 @@ impl Debug for Value {
                     formatter.debug_struct("Value")
                         .field("bool_value", b)
                         .finish()
-                }
+                },
                 Value { kind: ValueKind::ValNil, u: ValueUnion { f } } => {
                     formatter.debug_struct("Value")
                         .field("nil_val", f)
                         .finish()
-                }
+                },
                 Value { kind: ValueKind::ValNumber, u: ValueUnion { f } } => {
                     formatter.debug_struct("Value")
                         .field("number_value", f)
+                        .finish()
+                },
+                Value { kind: ValueKind::ValObj, u: ValueUnion { o } } => {
+                    formatter.debug_struct("Object")
+                        .field("object_value", o)
                         .finish()
                 }
             }
@@ -52,11 +76,18 @@ impl Debug for Value {
     }
 }
 
+pub type YSObject = Rc<dyn ObjectHandler>;
+
+// > uses trait inheritance : a constraint on implementors of MyTrait: "If you implement MyTrait, you have to implement Debug too"
+trait ObjectHandler: std::fmt::Debug {
+    fn value(self: Rc<Self>) -> YSObject;
+}
+
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub union ValueUnion {
     f: f32,
     b: bool,
+    o: ManuallyDrop<YSObject>,
 }
 
 #[repr(u32)]
@@ -65,6 +96,7 @@ pub enum ValueKind {
     ValBool,
     ValNil,
     ValNumber,
+    ValObj,
 }
 
 impl Value {
@@ -73,9 +105,10 @@ impl Value {
             return false
         }
         return match a.kind {
-            ValueKind::ValBool => { Value::as_bool(&a) == Value::as_bool(&b) }
-            ValueKind::ValNil => { true }
-            ValueKind::ValNumber => { Value::as_number(&a) == Value::as_number(&b) }
+            ValueKind::ValBool => { Value::as_bool(&a) == Value::as_bool(&b) },
+            ValueKind::ValNil => { true },
+            ValueKind::ValNumber => { Value::as_number(&a) == Value::as_number(&b) },
+            ValueKind::ValObj => { Rc::ptr_eq(&Value::as_obj(&a).unwrap(), &Value::as_obj(&b).unwrap()) }
         }
     }
 
@@ -84,8 +117,10 @@ impl Value {
             ValueKind::ValBool => { println!("{}", self.as_bool().unwrap()) },
             ValueKind::ValNil => { println!("{}", self.as_nil().unwrap()) },
             ValueKind::ValNumber => { println!("{}", self.as_number().unwrap()) },
+            ValueKind::ValObj => { println!("{:?}", self.as_obj()) }
         }
     }
+
     // instantiate a Value from a Rust primitive
     // primitive -> Value
     pub fn bool_val(b: bool) -> Self {
@@ -106,6 +141,13 @@ impl Value {
         Self {
             kind: ValueKind::ValNumber,
             u: ValueUnion { f: num }
+        }
+    }
+
+    pub fn obj_value(o: YSObject) -> Self {
+        Self {
+            kind: ValueKind::ValObj,
+            u: ValueUnion { o: ManuallyDrop::new(Rc::clone(&o)) }
         }
     }
 
@@ -141,11 +183,21 @@ impl Value {
         }
     }
 
+    pub fn as_obj(&self) -> Result<YSObject, InterpretError> {
+        if self.is_obj() {
+            unsafe {
+                Ok(Rc::clone(&self.u.o))
+            }
+        } else {
+            Err(InterpretError::INTERPRET_RUNTIME_ERROR)
+        }
+    }
+
     // check the kind of a value and return true or false
     pub fn is_bool(&self) -> bool {
         unsafe {
             match self {
-                Value { kind: ValueKind::ValBool, u: ValueUnion { b } } => true,
+                Value { kind: ValueKind::ValBool, u: ValueUnion { b: _b } } => true,
                 _ => false,
             }
         }
@@ -163,7 +215,16 @@ impl Value {
     pub fn is_number(&self) -> bool {
         unsafe {
             match self {
-                Value { kind: ValueKind::ValNumber, u: ValueUnion { f } } => true,
+                Value { kind: ValueKind::ValNumber, u: ValueUnion { f: _f } } => true,
+                _ => false,
+            }
+        }
+    }
+
+    pub fn is_obj(&self) -> bool {
+        unsafe {
+            match self {
+                Value { kind: ValueKind::ValObj, u: ValueUnion { o: _o } } => true,
                 _ => false,
             }
         }
