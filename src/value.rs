@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::fmt::{Debug, Formatter};
 use std::mem::ManuallyDrop;
 use std::rc::Rc;
@@ -142,7 +141,7 @@ impl Value {
         }
     }
 
-    pub fn obj_value(o: Rc<dyn ObjectHandler>) -> Self {
+    fn obj_value(o: Rc<dyn ObjectHandler>) -> Self {
         Self {
             kind: ValueKind::ValObj,
             u: ValueUnion { o: ManuallyDrop::new(Rc::clone(&o)) }
@@ -251,9 +250,18 @@ impl Value {
 // ##############################################################
 // Object Type
 // ##############################################################
-// pub type YSObject = Rc<dyn ObjectHandler>;
 
 // > uses trait inheritance : a constraint on implementors of MyTrait: "If you implement MyTrait, you have to implement Debug too"
+// todo: research if a static lifetime is right here
+pub fn allocate_object<T>(data: T) -> Value
+    where T: ObjectHandler + 'static
+{
+    let rc = Rc::new(data);
+    let obj = Value::obj_value(rc);
+
+    return obj
+}
+
 pub trait ObjectHandler: std::fmt::Debug {
     fn kind(self: Rc<Self>) -> ObjKind;
 

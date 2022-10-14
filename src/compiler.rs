@@ -1,9 +1,8 @@
-use std::rc::Rc;
 use crate::chunk::{Chunk, OpCode};
 use crate::debug::disassemble_chunk;
 use crate::scanner::{Scanner, Token, TokenKind};
 use crate::scanner::TokenKind::*;
-use crate::value::Value;
+use crate::value::{allocate_object, Value};
 
 const DEBUG_PRINT_CODE: bool = false;
 
@@ -85,9 +84,9 @@ fn number<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut S
 fn string<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
     let slice = parser.previous.as_ref().unwrap().slice;
     let len = slice.len();
-    let value = slice[1..len-1].to_string();
-    let rc = Rc::new(value);
-    parser.emit_constant(Value::obj_value(rc));
+    let string = slice[1..len-1].to_string();
+    let string_obj = allocate_object(string);
+    parser.emit_constant(string_obj);
 }
 
 fn binary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {

@@ -1,10 +1,11 @@
+use std::collections::LinkedList;
 use std::rc::Rc;
 use crate::chunk::{Chunk, OpCode::*, OpCode};
 use crate::compiler::compile;
 use crate::debug::disassemble_chunk;
 use crate::error::InterpretError;
 use crate::error::InterpretError::INTERPRET_RUNTIME_ERROR;
-use crate::value::{Value};
+use crate::value::{allocate_object, ObjectHandler, Value};
 
 #[allow(non_camel_case_types)]
 #[derive(PartialEq)]
@@ -19,9 +20,10 @@ const STACK_MAX: usize = 256;
 #[derive(Default)]
 pub struct VM {
     pub chunk: Chunk,
+    /// instruction pointer, points at bytecode about to be executed
     pub ip: usize,
-    // instruction pointer, points at bytecode about to be executed
     pub stack: Vec<Value>,
+    pub objects: LinkedList<Rc<dyn ObjectHandler>>,
 }
 
 impl VM {
@@ -38,20 +40,43 @@ impl VM {
                 self.ip = 0; // Q
 
                 let result = self.run();
-
                 return result;
             },
+        }
+    }
+
+    pub fn free_objects(mut self) {
+        loop {
+            match self.objects.pop_front() {
+                None => { break }
+                Some(_obj) => {
+                    drop(_obj)
+                }
+            }
         }
     }
 
     fn push(&mut self, value: Value) {
         self.stack.push(value);
     }
+
     fn pop(&mut self) -> Value {
         self.stack.pop().unwrap()
     }
+
     fn peek(&mut self, from_top: usize) -> Option<&Value> {
         self.stack.get(self.stack.len() - from_top - 1)
+    }
+
+    // Pushes the newly created object to the objects linked list. Ensures the Value is of type object.
+    fn track_object(&mut self, val: &Value) {
+        if !val.is_obj() {
+            panic!("Cannot track a Value which is not an Object");
+        } else {
+            let obj = val.as_obj().unwrap();
+            let rc = Rc::clone(&obj);
+            self.objects.push_front(rc);
+        }
     }
 
     // nil and false are falsey and every other value behaves like true
@@ -67,12 +92,10 @@ impl VM {
         let a = Value::as_string(&self.pop()).unwrap();
 
         let cat = format!("{}{}", a, b).replace("\"", "");
-        let rc_cat = Rc::new(cat);
+        let obj = allocate_object(cat);
 
-        self.push(Value::obj_value(rc_cat));
-
-        //drop(a);
-        //drop(b);
+        self.track_object(&obj);
+        self.stack.push(obj);
     }
 
     //Q: what happens when there are multiple chunks?

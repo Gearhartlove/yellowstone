@@ -38,6 +38,8 @@ fn run_file(mut vm: VM, path: &String) {
         Err(e) => { println!("{:?}", e) },
         Ok(_) => {},
     }
+
+    vm.free_objects();
 }
 
 fn repl(mut vm: VM) {
@@ -45,11 +47,18 @@ fn repl(mut vm: VM) {
     loop {
         // request std input stream and print result
         match std::io::stdin().read_line(&mut line) {
-            Ok(_) => print!("> {line}"),
+            Ok(_) => {
+                match line.as_str() {
+                    "exit" | "Exit" | "Quit" | "quit" | "q" => { break }
+                    _ => { print!("> {line}") }
+                }
+            },
             Err(error) => println!("> error: {error}"),
         }
 
         let result = &vm.interpret(&line);
         line.clear(); // clear buffer for next repl
     }
+
+    vm.free_objects();
 }
