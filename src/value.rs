@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fmt::{Debug, Formatter};
 use std::mem::ManuallyDrop;
 use std::rc::Rc;
@@ -101,10 +102,10 @@ impl Value {
             ValueKind::ValNil => { true },
             ValueKind::ValNumber => { Value::as_number(&a) == Value::as_number(&b) },
             ValueKind::ValObj => {
-                let string_a = Value::as(&a).unwrap();
-                let string_b = Value::as_obj(&b).unwrap();
+                let string_a = a.as_string().unwrap();
+                let string_b = b.as_string().unwrap();
 
-                Rc::ptr_eq(&Value::as_obj(&a).unwrap(), &Value::as_obj(&b).unwrap())
+                string_a == string_b
             }
         }
     }
@@ -193,9 +194,8 @@ impl Value {
     pub fn as_string(&self) -> Result<String, InterpretError> {
         if self.is_obj() {
             unsafe {
-                // do I have to cast here?
-                // how to turn any object into a string?
-                Ok(self.u.o)
+                let obj = self.as_obj().unwrap();
+                Ok(obj.to_string())
             }
         } else {
             Err(InterpretError::INTERPRET_RUNTIME_ERROR)
@@ -215,7 +215,7 @@ impl Value {
     pub fn is_nil(&self) -> bool {
         unsafe {
             match self {
-                Value { kind: ValueKind::ValNil, u: ValueUnion { f } } => *f == 0.,
+
                 _ => false,
             }
         }
@@ -252,7 +252,10 @@ impl Value {
 // > uses trait inheritance : a constraint on implementors of MyTrait: "If you implement MyTrait, you have to implement Debug too"
 pub trait ObjectHandler: std::fmt::Debug {
     fn kind(self: Rc<Self>) -> ObjKind;
-    // fn drop(self) {};
+
+    fn to_string(self: Rc<Self>) -> String {
+        format!("{:?}", self)
+    }
 
     fn is_string(self: Rc<Self>) -> bool {
         self.kind() == ObjKind::OBJ_STRING
