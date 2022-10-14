@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use crate::chunk::{Chunk, OpCode};
 use crate::debug::disassemble_chunk;
 use crate::scanner::{Scanner, Token, TokenKind};
@@ -79,6 +80,14 @@ fn grouping<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut
 fn number<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
     let value = parser.previous.as_ref().unwrap().slice.parse::<f32>().unwrap();
     parser.emit_constant(Value::number_value(value));
+}
+
+fn string<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
+    let slice = parser.previous.as_ref().unwrap().slice;
+    let len = slice.len();
+    let value = slice[1..len-1].to_string();
+    let rc = Rc::new(value);
+    parser.emit_constant(Value::obj_value(rc));
 }
 
 fn binary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
@@ -358,7 +367,7 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
             precedence: Precedence::PREC_NONE
         }}
         TOKEN_STRING => { ParseRule {
-            prefix: None,
+            prefix: Some(&string),
             infix: None,
             precedence: Precedence::PREC_NONE
         }}

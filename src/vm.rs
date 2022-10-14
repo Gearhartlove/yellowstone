@@ -83,10 +83,9 @@ impl VM {
                         Ok(None)
                     }
                 }
-                OP_CONSTANT(c) => {
-                    let c = c.clone();
-
-                    self.stack.push(c);
+                OP_CONSTANT(value) => {
+                    let value: Value = value.clone();
+                    self.stack.push(value);
                     Ok(())
                 }
                 OP_NEGATE => {

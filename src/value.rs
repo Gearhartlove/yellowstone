@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::fmt::{Debug, Formatter};
 use std::mem::ManuallyDrop;
 use std::rc::Rc;
@@ -10,6 +9,21 @@ pub struct Value {
     u: ValueUnion,
 }
 
+#[repr(C)]
+pub union ValueUnion {
+    f: f32,
+    b: bool,
+    o: ManuallyDrop<Rc<dyn ObjectHandler>>,
+}
+
+#[repr(u32)]
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum ValueKind {
+    ValBool,
+    ValNil,
+    ValNumber,
+    ValObj,
+}
 impl Clone for Value {
     fn clone(&self) -> Self {
         match self.kind {
@@ -46,7 +60,6 @@ impl PartialEq for Value {
     }
 }
 
-
 impl Debug for Value {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
         unsafe {
@@ -76,28 +89,7 @@ impl Debug for Value {
     }
 }
 
-pub type YSObject = Rc<dyn ObjectHandler>;
 
-// > uses trait inheritance : a constraint on implementors of MyTrait: "If you implement MyTrait, you have to implement Debug too"
-trait ObjectHandler: std::fmt::Debug {
-    fn value(self: Rc<Self>) -> YSObject;
-}
-
-#[repr(C)]
-pub union ValueUnion {
-    f: f32,
-    b: bool,
-    o: ManuallyDrop<YSObject>,
-}
-
-#[repr(u32)]
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub enum ValueKind {
-    ValBool,
-    ValNil,
-    ValNumber,
-    ValObj,
-}
 
 impl Value {
     pub fn values_equal(a: Value, b: Value) -> bool {
@@ -108,7 +100,12 @@ impl Value {
             ValueKind::ValBool => { Value::as_bool(&a) == Value::as_bool(&b) },
             ValueKind::ValNil => { true },
             ValueKind::ValNumber => { Value::as_number(&a) == Value::as_number(&b) },
-            ValueKind::ValObj => { Rc::ptr_eq(&Value::as_obj(&a).unwrap(), &Value::as_obj(&b).unwrap()) }
+            ValueKind::ValObj => {
+                let string_a = Value::as(&a).unwrap();
+                let string_b = Value::as_obj(&b).unwrap();
+
+                Rc::ptr_eq(&Value::as_obj(&a).unwrap(), &Value::as_obj(&b).unwrap())
+            }
         }
     }
 
@@ -144,7 +141,7 @@ impl Value {
         }
     }
 
-    pub fn obj_value(o: YSObject) -> Self {
+    pub fn obj_value(o: Rc<dyn ObjectHandler>) -> Self {
         Self {
             kind: ValueKind::ValObj,
             u: ValueUnion { o: ManuallyDrop::new(Rc::clone(&o)) }
@@ -183,10 +180,22 @@ impl Value {
         }
     }
 
-    pub fn as_obj(&self) -> Result<YSObject, InterpretError> {
+    pub fn as_obj(&self) -> Result<Rc<dyn ObjectHandler>, InterpretError> {
         if self.is_obj() {
             unsafe {
                 Ok(Rc::clone(&self.u.o))
+            }
+        } else {
+            Err(InterpretError::INTERPRET_RUNTIME_ERROR)
+        }
+    }
+
+    pub fn as_string(&self) -> Result<String, InterpretError> {
+        if self.is_obj() {
+            unsafe {
+                // do I have to cast here?
+                // how to turn any object into a string?
+                Ok(self.u.o)
             }
         } else {
             Err(InterpretError::INTERPRET_RUNTIME_ERROR)
@@ -228,5 +237,40 @@ impl Value {
                 _ => false,
             }
         }
+    }
+
+    fn is_obj_kind(value: &Value, obj_kind: ObjKind) -> bool {
+        value.is_obj() && value.as_obj().unwrap().kind() == obj_kind
+    }
+}
+
+// ##############################################################
+// Object Type
+// ##############################################################
+// pub type YSObject = Rc<dyn ObjectHandler>;
+
+// > uses trait inheritance : a constraint on implementors of MyTrait: "If you implement MyTrait, you have to implement Debug too"
+pub trait ObjectHandler: std::fmt::Debug {
+    fn kind(self: Rc<Self>) -> ObjKind;
+    // fn drop(self) {};
+
+    fn is_string(self: Rc<Self>) -> bool {
+        self.kind() == ObjKind::OBJ_STRING
+    }
+}
+
+// ##############################################################
+// Object Implementations
+// ##############################################################
+
+#[allow(non_camel_case_types)]
+#[derive(PartialOrd, PartialEq)]
+pub enum ObjKind {
+    OBJ_STRING,
+}
+
+impl ObjectHandler for String {
+    fn kind(self: Rc<Self>) -> ObjKind {
+        ObjKind::OBJ_STRING
     }
 }
