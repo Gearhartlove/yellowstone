@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use crate::chunk::{Chunk, OpCode::*, OpCode};
 use crate::compiler::compile;
 use crate::debug::disassemble_chunk;
@@ -57,6 +58,21 @@ impl VM {
     fn is_falsey(value: Value) -> bool {
         Value::is_nil(&value)
             || (Value::is_bool(&value) && !Value::as_bool(&value).unwrap())
+    }
+
+    /// Pops the top two values off of the stack, joins them together, and then pushes the
+    /// result onto the stack. Requires the two popped values to be strings.
+    fn concatenate(&mut self) {
+        let b = Value::as_string(&self.pop()).unwrap();
+        let a = Value::as_string(&self.pop()).unwrap();
+
+        let cat = format!("{}{}", a, b).replace("\"", "");
+        let rc_cat = Rc::new(cat);
+
+        self.push(Value::obj_value(rc_cat));
+
+        //drop(a);
+        //drop(b);
     }
 
     //Q: what happens when there are multiple chunks?
@@ -133,7 +149,19 @@ impl VM {
                     binary_operator(self, '<')
                 }
                 OP_ADD => {
-                    binary_operator(self, '+')
+                    if Value::is_string(self.peek(0).unwrap()) && Value::is_string(self.peek(1).unwrap()) {
+                        self.concatenate();
+                        Ok(())
+                    } else if Value::is_number(self.peek(0).unwrap()) && Value::is_number(self.peek(1).unwrap()) {
+                        let b: f32 = Value::as_number(&self.stack.pop().unwrap()).unwrap();
+                        let a: f32 = Value::as_number(&self.stack.pop().unwrap()).unwrap();
+                        self.push(Value::number_value(a + b));
+                        Ok(())
+                    } else {
+                        eprintln!("Operands must be two numbers or two strings.");
+                        Err(INTERPRET_RUNTIME_ERROR)
+                    }
+                    //binary_operator(self, '+')
                 }
                 OP_SUBTRACT => {
                     binary_operator(self, '-')

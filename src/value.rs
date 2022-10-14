@@ -239,6 +239,10 @@ impl Value {
         }
     }
 
+    pub fn is_string(value: &Value) -> bool {
+        Value::is_obj_kind(value,ObjKind::OBJ_STRING)
+    }
+
     fn is_obj_kind(value: &Value, obj_kind: ObjKind) -> bool {
         value.is_obj() && value.as_obj().unwrap().kind() == obj_kind
     }
@@ -257,9 +261,6 @@ pub trait ObjectHandler: std::fmt::Debug {
         format!("{:?}", self)
     }
 
-    fn is_string(self: Rc<Self>) -> bool {
-        self.kind() == ObjKind::OBJ_STRING
-    }
 }
 
 // ##############################################################
