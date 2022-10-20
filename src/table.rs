@@ -54,8 +54,12 @@ impl Table {
 
         return match entry {
             Some(i) => {
-                let val = &self.entries.get(i).unwrap().as_ref().unwrap().value;
-                Some(val)
+                match &self.entries.get(i).unwrap() {
+                    Some(e) => {
+                        Some(&e.value)
+                     },
+                    None => { None },
+                }
             }
             None => { None }
         }
@@ -67,7 +71,7 @@ impl Table {
         }
 
         let entry =
-            Table::find_entry(&mut self.entries, &key, self.capacity);
+            Table::find_entry(&mut self.entries, key, self.capacity);
 
         return match entry {
             Some(i) => {
@@ -77,7 +81,7 @@ impl Table {
         }
     }
 
-    fn delete(&mut self, key: &String) -> bool {
+    fn delete(&mut self, key: &str) -> bool {
         if self.count == 0 {
             return false;
         }
@@ -239,20 +243,68 @@ mod tests {
     use crate::value::{allocate_object, Value};
 
     #[test]
-    fn table_insert() -> Result<(), Box<TableError>> {
+    fn table_test_insert() -> Result<(), Box<TableError>> {
         let mut table = Table::default();
         table.insert("yellow", allocate_object("stone"))?;
         Ok(())
     }
 
     #[test]
-    fn table_get() {
+    fn table_test_get() {
         let mut table = Table::default();
         let _ = table.insert("yellow", allocate_object("stone"));
         let _ = table.insert("bicycle", allocate_object("patagonia"));
 
-        assert_eq!("yellow", table.get_unchecked("stone"));
-        assert_eq!("patagonia", table.get_unchecked("bicycle"));
+        assert_eq!(table.get_unchecked("yellow"), "stone");
+        assert_eq!(table.get_unchecked("bicycle"), "patagonia");
+    }
+
+    #[test]
+    fn table_test_delete() {
+        let mut table = Table::default();
+        let _ = table.insert("yellow", allocate_object("stone"));
+        let _ = table.insert("bicycle", allocate_object("patagonia"));
+
+        assert_eq!(table.get_unchecked("yellow"), "stone");
+        assert_eq!(table.get_unchecked("bicycle"), "patagonia");
+
+        table.delete("yellow");
+        table.delete("bicycle");
+        assert_eq!(None, table.get("yellow"));
+        assert_eq!(None, table.get("bicycle"))
+    }
+
+    #[test]
+    fn table_test_integration() {
+        let mut table = Table::default();
+        let _ = table.insert("yellow", allocate_object("stone"));
+        let _ = table.insert("bicycle", allocate_object("patagonia"));
+        let _ = table.insert("van", allocate_object("life"));
+
+        assert_eq!(table.get_unchecked("yellow"), "stone");
+        assert_eq!(table.get_unchecked("bicycle"), "patagonia");
+        assert_eq!(table.get_unchecked("van"), "life");
+
+        table.delete("yellow");
+        table.delete("bicycle");
+
+        assert_eq!(None, table.get("yellow"));
+        assert_eq!(None, table.get("bicycle"));
+        assert_eq!(table.get_unchecked("van"), "life")
+    }
+
+    #[test]
+    fn table_test_values() {
+        let mut table = Table::default();
+        let _ = table.insert("answer", Value::number_value(42.));
+        let _ = table.insert("happy?", Value::bool_val(true));
+        let _ = table.insert("name", allocate_object("kristoff"));
+        let _ = table.insert("null", Value::nil_value());
+
+        assert_eq!(table.get_unchecked("answer"), &42.);
+        assert_eq!(table.get_unchecked("happy?"), &true);
+        assert_eq!(table.get_unchecked("name"), "kristoff");
+        assert_eq!(table.get_unchecked("null"), &0.);
     }
 
     #[test]

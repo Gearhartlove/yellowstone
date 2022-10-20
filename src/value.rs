@@ -45,6 +45,24 @@ impl PartialEq<str> for Value {
     }
 }
 
+impl PartialEq<bool> for Value {
+    fn eq(&self, other: &bool) -> bool {
+        let conv = self.as_bool().unwrap();
+        conv == *other
+    }
+}
+
+impl PartialEq<f32> for Value {
+    fn eq(&self, other: &f32) -> bool {
+        let conv = match self.kind {
+            ValueKind::ValNil => self.as_nil().unwrap(),
+            ValueKind::ValNumber => self.as_number().unwrap(),
+            _ => ( return false )
+        };
+        conv == *other
+    }
+}
+
 impl PartialEq<Value> for str {
     fn eq(&self, other: &Value) -> bool {
         let other = other.as_string().unwrap();
@@ -53,6 +71,21 @@ impl PartialEq<Value> for str {
         self == &other.as_str()[1..other.len()-1]
     }
 }
+
+impl PartialEq<Value> for f32 {
+    fn eq(&self, other: &Value) -> bool {
+        let conv = other.as_number().unwrap();
+        *self == conv
+    }
+}
+
+impl PartialEq<Value> for bool {
+    fn eq(&self, other: &Value) -> bool {
+        let conv = other.as_bool().unwrap();
+        *self == conv
+    }
+}
+
 
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
@@ -230,6 +263,7 @@ impl Value {
 
     pub fn is_nil(&self) -> bool {
         match self {
+            Value { kind: ValueKind::ValNil, u: ValueUnion { f: _} } => true,
             _ => false,
         }
     }
