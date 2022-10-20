@@ -192,10 +192,8 @@ impl Value {
 
     pub fn as_string(&self) -> Result<String, InterpretError> {
         if self.is_obj() {
-            unsafe {
-                let obj = self.as_obj().unwrap();
-                Ok(obj.to_string())
-            }
+            let obj = self.as_obj().unwrap();
+            Ok(obj.to_string())
         } else {
             Err(InterpretError::INTERPRET_RUNTIME_ERROR)
         }
@@ -212,11 +210,8 @@ impl Value {
     }
 
     pub fn is_nil(&self) -> bool {
-        unsafe {
-            match self {
-
-                _ => false,
-            }
+        match self {
+            _ => false,
         }
     }
 
@@ -261,6 +256,8 @@ pub fn allocate_object<T>(data: T) -> Value
 
     return obj
 }
+
+
 
 pub trait ObjectHandler: std::fmt::Debug {
     fn kind(self: Rc<Self>) -> ObjKind;

@@ -7,3 +7,11 @@ pub fn is_alpha(c: &str) -> bool {
     || ("A"..="Z").contains(&c)
     || c == "_"
 }
+
+pub fn grow_capacity(capacity: usize) -> usize {
+    return if capacity <= 1 {
+        8
+    } else {
+        capacity * 2
+    }
+}

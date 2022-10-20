@@ -14,6 +14,7 @@ mod scanner;
 mod util;
 mod value;
 mod error;
+mod table;
 
 
 fn main() {

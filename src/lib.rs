@@ -9,3 +9,4 @@ pub mod vm;
 pub mod compiler;
 pub mod value;
 pub mod error;
+pub mod table;
