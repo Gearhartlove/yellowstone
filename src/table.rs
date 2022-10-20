@@ -1,3 +1,4 @@
+use core::panic;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use crate::util::grow_capacity;
@@ -34,8 +35,16 @@ struct Table {
 }
 
 impl Table {
+    fn new() -> Self {
+        Table {
+            count: 0,
+            capacity: 1,
+            entries: Vec::default(),
+        }
+    }
+
     /// Returns a value given a key.
-    fn get(&mut self, key: String) -> Option<&Value> {
+    fn get(&mut self, key: &str) -> Option<&Value> {
         if self.count == 0 {
             return None;
         }
@@ -44,11 +53,27 @@ impl Table {
             Table::find_entry(&mut self.entries, &key, self.capacity);
 
         return match entry {
-            Ok(i) => {
+            Some(i) => {
                 let val = &self.entries.get(i).unwrap().as_ref().unwrap().value;
                 Some(val)
             }
-            Err(_) => { None }
+            None => { None }
+        }
+    }
+    
+    fn get_unchecked(&mut self, key: &str) -> &Value {
+        if self.count == 0 {
+            panic!("{key} not found.");
+        }
+
+        let entry =
+            Table::find_entry(&mut self.entries, &key, self.capacity);
+
+        return match entry {
+            Some(i) => {
+                &self.entries.get(i).unwrap().as_ref().unwrap().value
+            }
+            None => { panic!("{key} not found.") }
         }
     }
 
@@ -62,16 +87,16 @@ impl Table {
             Table::find_entry(&mut self.entries, key, self.capacity);
         return match find {
             // Place a tombstone in the entry.
-            Ok(i) => {
+            Some(i) => {
                 let entry = self.entries.get_mut(i).unwrap().as_mut().unwrap();
                 entry.is_tombstone = true;
                 true
             }
-            Err(_) => { false }
+            None => { false }
         };
     }
 
-    /// Inserts an entity into the hash map. Requires that the entity does not already exist. Resizes
+    /// Inserts an entity into the hash map. Resizes
     /// the table if the capacity has been reached.
     fn insert(&mut self, key: impl ToString, value: Value) -> Result<(), Box<TableError>> {
         let key = key.to_string();
@@ -82,39 +107,39 @@ impl Table {
         }
 
         // Check if the entry is already in the hash map
-        let bucket_index =
-            Table::find_entry(&mut self.entries, &key, self.capacity);
-        return match bucket_index {
-            Ok(i) => {
-                let entry = Entry::new(key, value);
-                *self.entries.get_mut(i).unwrap() = Some(entry);
-                self.count += 1;
-                Ok(())
-            },
-            Err(e) => { Err(e) },
-        };
+        // Should always find a spot in the hashmap to insert the new elements. 
+        let bucket_index = Table::find_entry(&mut self.entries, &key, self.capacity);
+        let entry = Entry::new(key, value);
+        *self.entries.get_mut(bucket_index.unwrap()).unwrap() = Some(entry);
+        self.count += 1;
+        Ok(())
     }
 
     /// Finds the first occurrence of the key or the first empty bucket in the hash table with
-    /// linear probing. If there exists an entry with the same key as the input key, return an
-    /// insertion error; this hash map implementation will not override.
-    fn find_entry(map: &mut Vec<Option<Entry>>, key: &String, capacity: usize) -> Result<usize, Box<TableError>> {
+    /// linear probing. 
+    fn find_entry(map: &mut Vec<Option<Entry>>, key: &str , capacity: usize) -> Option<usize> {
         let hash = fnv1a(key.as_bytes());
         let mut i = index(hash, capacity);
+        let start_i = i;
         loop {
             let entry = &map[i];
             match entry {
                 // The hash table DOES NOT contain the entry
-                None => { return Ok(i) }
+                None => { return Some(i) }
                 // The hash table DOES contain the entry
                 Some(e) => {
                     if e.key == *key && !e.is_tombstone  {
-                        return Err(Box::new(TableError::InsertKeyError))
+                        return Some(i);
                     }
                 }
             }
 
             i = (i + 1) % capacity;
+
+            if start_i == i {
+                return None;
+            }
+
         }
     }
 
@@ -127,7 +152,7 @@ impl Table {
             (0..new_capacity).map(|_| None).collect();
 
         // Reset capacity.
-        self.capacity = 0;
+        self.count = 0;
 
         for mut old_entry in self.entries.iter_mut() {
             match old_entry {
@@ -135,14 +160,9 @@ impl Table {
                     // Only add the entries which are not tombstones.
                     if !e.is_tombstone {
                         // Will always return usize because the array was just initialized.
-                        let destination =
-                            Table::find_entry(&mut new, &e.key, self.capacity);
-                        match destination {
-                            Ok(i) => {
-                                *new.get_mut(i).unwrap() = old_entry.take()
-                            }
-                            Err(_) => {}
-                        }
+                        let destination = Table::find_entry(&mut new, &e.key, self.capacity);
+                            *new.get_mut(destination.unwrap()).unwrap() = old_entry.take();
+                            self.count = self.count + 1;
                     }
                 }
                 None => { continue }
@@ -150,6 +170,7 @@ impl Table {
         }
 
         self.entries = new;
+        self.capacity = new_capacity;
 
     }
 
@@ -214,14 +235,24 @@ fn index(hash: u64, capacity: usize) -> usize {
 }
 
 mod tests {
-    use crate::table::{fnv1a, Table};
+    use crate::table::{fnv1a, Table, TableError};
     use crate::value::{allocate_object, Value};
 
     #[test]
-    fn table_test() {
+    fn table_insert() -> Result<(), Box<TableError>> {
         let mut table = Table::default();
-        let _ = table.insert("yellow", allocate_object("stone".to_string()));
-        assert_eq!("stone", table.get("yellow".to_string()).unwrap().as_string().unwrap());
+        table.insert("yellow", allocate_object("stone"))?;
+        Ok(())
+    }
+
+    #[test]
+    fn table_get() {
+        let mut table = Table::default();
+        let _ = table.insert("yellow", allocate_object("stone"));
+        let _ = table.insert("bicycle", allocate_object("patagonia"));
+
+        assert_eq!("yellow", table.get_unchecked("stone"));
+        assert_eq!("patagonia", table.get_unchecked("bicycle"));
     }
 
     #[test]

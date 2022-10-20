@@ -24,6 +24,7 @@ pub enum ValueKind {
     ValNumber,
     ValObj,
 }
+
 impl Clone for Value {
     fn clone(&self) -> Self {
         match self.kind {
@@ -32,6 +33,24 @@ impl Clone for Value {
             ValueKind::ValNumber => { let f = self.as_number().unwrap(); Value { kind: ValueKind::ValNumber, u: ValueUnion { f } } }
             ValueKind::ValObj => { let o = self.as_obj().unwrap(); Value { kind: ValueKind::ValObj, u: ValueUnion { o: ManuallyDrop::new(o) } } }
         }
+    }
+}
+
+impl PartialEq<str> for Value {
+    fn eq(&self, other: &str) -> bool {
+        let conv = self.as_string().unwrap();
+        // todo: reason out the extra " " around the word
+
+        &conv .as_str()[1..conv .len()-1] == other
+    }
+}
+
+impl PartialEq<Value> for str {
+    fn eq(&self, other: &Value) -> bool {
+        let other = other.as_string().unwrap();
+        // todo: reason out the extra " " around the word
+
+        self == &other.as_str()[1..other.len()-1]
     }
 }
 
@@ -257,8 +276,6 @@ pub fn allocate_object<T>(data: T) -> Value
     return obj
 }
 
-
-
 pub trait ObjectHandler: std::fmt::Debug {
     fn kind(self: Rc<Self>) -> ObjKind;
 
@@ -273,12 +290,18 @@ pub trait ObjectHandler: std::fmt::Debug {
 // ##############################################################
 
 #[allow(non_camel_case_types)]
-#[derive(PartialOrd, PartialEq)]
+#[derive(PartialOrd, PartialEq, Debug)]
 pub enum ObjKind {
     OBJ_STRING,
 }
 
 impl ObjectHandler for String {
+    fn kind(self: Rc<Self>) -> ObjKind {
+        ObjKind::OBJ_STRING
+    }
+}
+
+impl ObjectHandler for &str {
     fn kind(self: Rc<Self>) -> ObjKind {
         ObjKind::OBJ_STRING
     }
