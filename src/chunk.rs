@@ -19,6 +19,7 @@ pub enum OpCode {
     OP_SUBTRACT,
     OP_MULTIPLY,
     OP_DIVIDE,
+    OP_PRINT,
 }
 
 /// Contains the bytecode instructions as well as constants created from parsing tokens.

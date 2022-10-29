@@ -114,13 +114,15 @@ impl VM {
             let instruction = self.read_byte();
             let result = match instruction {
                 OP_RETURN => {
-                    return if let Some(v) = self.stack.pop() {
-                        println!("chunk result: {:?}", v);
-                        Ok(Some(v))
-                    } else {
-                        println!("Stack is empty, nothing to pop");
-                        Ok(None)
-                    }
+                    // changed in the global variable chapter
+                    todo!()
+                    // return if let Some(v) = self.stack.pop() {
+                    //     println!("chunk result: {:?}", v);
+                    //     Ok(Some(v))
+                    // } else {
+                    //     println!("Stack is empty, nothing to pop");
+                    //     Ok(None)
+                    // }
                 }
                 OP_CONSTANT(value) => {
                     let value: Value = value.clone();
@@ -197,6 +199,10 @@ impl VM {
                 }
                 OP_DEBUG => {
                     unimplemented!()
+                }
+                OP_PRINT => {
+                    println!("{:?}", self.pop());
+                    Ok(())
                 }
             };
 

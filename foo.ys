@@ -1,1 +1,2 @@
-"st" + "ri" + "ng" == "string more to this"
+print 1 + 4;
+print 3 * 4;

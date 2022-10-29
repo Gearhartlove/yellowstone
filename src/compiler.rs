@@ -1,4 +1,5 @@
 use crate::chunk::{Chunk, OpCode};
+use crate::chunk::OpCode::OP_PRINT;
 use crate::debug::disassemble_chunk;
 use crate::scanner::{Scanner, Token, TokenKind};
 use crate::scanner::TokenKind::*;
@@ -11,8 +12,9 @@ pub fn compile(source: &String) -> Result<Chunk, ()>{
     let mut scanner = Scanner::from(source);
     let mut parser = Parser::new(&mut current_chunk);
     parser.advance(&mut scanner); // Q; 'primes the pump' > ? do I need
-    parser.expression(&mut scanner);
-    parser.consume(TOKEN_EOF, "Expect end of expression", &mut scanner);
+    while !parser.match_token(TOKEN_EOF, &mut scanner) {
+        parser.declaration(&mut scanner);
+    }
     parser.end_compiler();
     return match parser.had_error {
         true => {
@@ -198,8 +200,40 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         }
     }
 
+    fn check(&self, kind: TokenKind) -> bool {
+        return self.current.as_ref().unwrap().kind == kind
+    }
+
+    fn match_token(&mut self, kind: TokenKind, scanner: &mut Scanner<'source>) -> bool {
+        if !self.check(kind) {
+            return false
+        }
+
+        self.advance(scanner);
+        true
+    }
+
     fn expression(&mut self, scanner: &mut Scanner<'source>) {
         self.parse_precedence(Precedence::PREC_ASSIGNMENT, scanner);
+    }
+
+    fn print_statement(&mut self, scanner: &mut Scanner<'source>) {
+        self.expression(scanner);
+        self.consume(TOKEN_SEMICOLON, "Expect ';' after value.", scanner);
+        self.emit_byte(OP_PRINT);
+    }
+
+    fn declaration(&mut self, scanner: &mut Scanner<'source>) {
+        self.statement(scanner);
+    }
+
+    fn statement(&mut self, scanner: &mut Scanner<'source>) {
+        if let Some(t) = &self.current {
+            match t.kind {
+                TOKEN_PRINT => { self.print_statement(scanner); }
+                _ => {}
+            }
+        }
     }
 
     fn parse_precedence(&mut self, precedence: Precedence, scanner: &mut Scanner<'source>) {
