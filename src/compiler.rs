@@ -11,8 +11,9 @@ pub fn compile(source: &String) -> Result<Chunk, ()>{
     let mut current_chunk = Chunk::default();
     let mut scanner = Scanner::from(source);
     let mut parser = Parser::new(&mut current_chunk);
-    parser.advance(&mut scanner); // Q; 'primes the pump' > ? do I need
+    parser.advance(&mut scanner);
     while !parser.match_token(TOKEN_EOF, &mut scanner) {
+        println!("dec");
         parser.declaration(&mut scanner);
     }
     parser.end_compiler();
@@ -71,12 +72,15 @@ struct ParseRule<'function, 'source, 'chunk> {
     precedence: Precedence,
 }
 
-
 // Functions to match each expression type
 fn grouping<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
     parser.expression(scanner);
     parser.consume(TokenKind::TOKEN_RIGHT_PAREN, "Expect ')' after expression.", scanner);
 }
+
+// fn printing<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
+//     parser.advance(scanner);
+// }
 
 fn number<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
     let value = parser.previous.as_ref().unwrap().slice.parse::<f32>().unwrap();
@@ -218,6 +222,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
     }
 
     fn print_statement(&mut self, scanner: &mut Scanner<'source>) {
+        self.advance(scanner);
         self.expression(scanner);
         self.consume(TOKEN_SEMICOLON, "Expect ';' after value.", scanner);
         self.emit_byte(OP_PRINT);
@@ -455,6 +460,7 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
             precedence: Precedence::PREC_NONE
         }}
         TOKEN_PRINT => { ParseRule {
+            // prefix: Some(&printing),
             prefix: None,
             infix: None,
             precedence: Precedence::PREC_NONE

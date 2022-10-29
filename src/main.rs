@@ -1,8 +1,6 @@
 extern crate core;
 
-use std::env;
-use crate::chunk::Chunk;
-use crate::debug::disassemble_chunk;
+use std::{env, io::Write};
 use crate::vm::VM;
 use std::fs;
 
@@ -46,15 +44,19 @@ fn run_file(mut vm: VM, path: &String) {
 fn repl(mut vm: VM) {
     let mut line = String::new();
     loop {
+        // print prompt
+        print!("> ");
+        let _ = std::io::stdout().flush();
+
         // request std input stream and print result
         match std::io::stdin().read_line(&mut line) {
             Ok(_) => {
                 match line.as_str() {
                     "exit" | "Exit" | "Quit" | "quit" | "q" => { break }
-                    _ => { print!("> {line}") }
+                    _ => {}
                 }
             },
-            Err(error) => println!("> error: {error}"),
+            Err(error) => println!("error: {error}"),
         }
 
         let result = &vm.interpret(&line);
