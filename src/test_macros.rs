@@ -1,5 +1,3 @@
-
-
 #[macro_export]
 macro_rules! assert_tokens_are {
     ($s:expr, $( $x:expr ),*) => {
@@ -19,11 +17,14 @@ macro_rules! assert_tokens_are {
                 // compare token to vec values
                 if let Some(t_kind) = temp_vec.get(i) {
                     assert_eq!(&token.kind, t_kind);
+                    if *t_kind != TokenKind::TOKEN_NUMBER {
+                        scanner.advance();
+                    }
                 } else {
                     panic!("assertion failed, out of bounds index; not enough tokens to compare against.")
                 }
                 i += 1;
-                scanner.advance();
+                //scanner.advance();
             }
         }
     };

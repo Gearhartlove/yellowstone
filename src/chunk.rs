@@ -72,13 +72,11 @@ fn encode(chunk: &mut Chunk, curr_line: usize) {
 
     if line_count == 0 {
         new_line(chunk, curr_line);
-    }
-    else {
+    } else {
         let same_line: bool = line_count == curr_line;
         if !same_line {
             new_line(chunk, curr_line);
-        }
-        else if same_line {
+        } else if same_line {
             chunk.lines.pop();
             let mut num = "".to_string();
             println!("{}", num);

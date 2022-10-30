@@ -1,15 +1,15 @@
-use std::collections::LinkedList;
-use std::rc::Rc;
-use crate::chunk::{Chunk, OpCode::*, OpCode};
+use crate::chunk::{Chunk, OpCode, OpCode::*};
 use crate::compiler::compile;
 use crate::debug::disassemble_chunk;
 use crate::error::InterpretError;
 use crate::error::InterpretError::INTERPRET_RUNTIME_ERROR;
 use crate::value::{allocate_object, ObjectHandler, Value};
+use std::collections::LinkedList;
+use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
 #[derive(PartialEq)]
-pub enum InterpretOk{
+pub enum InterpretOk {
     INTERPRET_CONTINUE,
     INTERPRET_OK,
 }
@@ -32,26 +32,22 @@ impl VM {
     pub fn interpret(&mut self, source: &String) -> Result<Option<Value>, InterpretError> {
         let result = compile(source);
         match result {
-            Err(_) => {
-                return Err(InterpretError::INTERPRET_COMPILE_ERROR)
-            },
+            Err(_) => return Err(InterpretError::INTERPRET_COMPILE_ERROR),
             Ok(chunk) => {
                 self.chunk = chunk;
                 self.ip = 0; // Q
 
                 let result = self.run();
                 return result;
-            },
+            }
         }
     }
 
     pub fn free_objects(mut self) {
         loop {
             match self.objects.pop_front() {
-                None => { break }
-                Some(_obj) => {
-                    drop(_obj)
-                }
+                None => break,
+                Some(_obj) => drop(_obj),
             }
         }
     }
@@ -81,8 +77,7 @@ impl VM {
 
     // nil and false are falsey and every other value behaves like true
     fn is_falsey(value: Value) -> bool {
-        Value::is_nil(&value)
-            || (Value::is_bool(&value) && !Value::as_bool(&value).unwrap())
+        Value::is_nil(&value) || (Value::is_bool(&value) && !Value::as_bool(&value).unwrap())
     }
 
     /// Pops the top two values off of the stack, joins them together, and then pushes the
@@ -114,15 +109,14 @@ impl VM {
             let instruction = self.read_byte();
             let result = match instruction {
                 OP_RETURN => {
-                    // changed in the global variable chapter
-                    todo!()
-                    // return if let Some(v) = self.stack.pop() {
-                    //     println!("chunk result: {:?}", v);
-                    //     Ok(Some(v))
-                    // } else {
-                    //     println!("Stack is empty, nothing to pop");
-                    //     Ok(None)
-                    // }
+                    //changed in the global variable chapter
+                    return if let Some(v) = self.stack.pop() {
+                        println!("chunk result: {:?}", v);
+                        Ok(Some(v))
+                    } else {
+                        //println!("Stack is empty, nothing to pop");
+                        Ok(None)
+                    };
                 }
                 OP_CONSTANT(value) => {
                     let value: Value = value.clone();
@@ -156,28 +150,28 @@ impl VM {
                 OP_TRUE => {
                     self.push(Value::bool_val(true));
                     Ok(())
-                },
+                }
                 OP_EQUAL => {
                     let a: Value = self.pop();
                     let b: Value = self.pop();
-                    self.push(Value::bool_val(Value::values_equal(a,b)));
+                    self.push(Value::bool_val(Value::values_equal(a, b)));
                     Ok(())
                 }
                 OP_FALSE => {
                     self.push(Value::bool_val(false));
                     Ok(())
-                },
-                OP_GREATER => {
-                    binary_operator(self, '>')
                 }
-                OP_LESS => {
-                    binary_operator(self, '<')
-                }
+                OP_GREATER => binary_operator(self, '>'),
+                OP_LESS => binary_operator(self, '<'),
                 OP_ADD => {
-                    if Value::is_string(self.peek(0).unwrap()) && Value::is_string(self.peek(1).unwrap()) {
+                    if Value::is_string(self.peek(0).unwrap())
+                        && Value::is_string(self.peek(1).unwrap())
+                    {
                         self.concatenate();
                         Ok(())
-                    } else if Value::is_number(self.peek(0).unwrap()) && Value::is_number(self.peek(1).unwrap()) {
+                    } else if Value::is_number(self.peek(0).unwrap())
+                        && Value::is_number(self.peek(1).unwrap())
+                    {
                         let b: f32 = Value::as_number(&self.stack.pop().unwrap()).unwrap();
                         let a: f32 = Value::as_number(&self.stack.pop().unwrap()).unwrap();
                         self.push(Value::number_value(a + b));
@@ -188,15 +182,9 @@ impl VM {
                     }
                     //binary_operator(self, '+')
                 }
-                OP_SUBTRACT => {
-                    binary_operator(self, '-')
-                }
-                OP_MULTIPLY => {
-                    binary_operator(self, '*')
-                }
-                OP_DIVIDE => {
-                    binary_operator(self, '/')
-                }
+                OP_SUBTRACT => binary_operator(self, '-'),
+                OP_MULTIPLY => binary_operator(self, '*'),
+                OP_DIVIDE => binary_operator(self, '/'),
                 OP_DEBUG => {
                     unimplemented!()
                 }
