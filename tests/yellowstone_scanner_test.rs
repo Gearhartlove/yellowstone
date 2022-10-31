@@ -58,6 +58,33 @@ fn tokenizer_expression_test() {
 }
 
 #[test]
+fn tokenizer_variable_test() {
+    assert_tokens_are!(
+        "var beverage = \"cafe au lait\"; 
+        var breakfast = \"beignets with \" + beverage;
+        print breakfast;",
+        TOKEN_VAR,
+        TOKEN_IDENTIFIER,
+        TOKEN_EQUAL,
+        TOKEN_STRING,
+        TOKEN_SEMICOLON,
+        //
+        TOKEN_VAR,
+        TOKEN_IDENTIFIER,
+        TOKEN_EQUAL,
+        TOKEN_STRING,
+        TOKEN_PLUS,
+        TOKEN_IDENTIFIER,
+        TOKEN_SEMICOLON,
+        ////
+        TOKEN_PRINT,
+        TOKEN_IDENTIFIER,
+        TOKEN_SEMICOLON,
+        TOKEN_EOF
+    )
+}
+
+#[test]
 fn peek_test() {
     let source = String::from("Hi!");
     let mut sc = Scanner::new(&source);

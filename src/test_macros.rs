@@ -13,11 +13,12 @@ macro_rules! assert_tokens_are {
             let mut scanner = Scanner::from(&source);
             let mut i = 0;
             while !scanner.is_at_end() {
-                let token = scanner.scan_token();
+                let parsed_token = scanner.scan_token();
                 // compare token to vec values
                 if let Some(t_kind) = temp_vec.get(i) {
-                    assert_eq!(&token.kind, t_kind);
-                    if *t_kind != TokenKind::TOKEN_NUMBER {
+                    assert_eq!(&parsed_token.kind, t_kind);
+                    if *t_kind != TokenKind::TOKEN_NUMBER && *t_kind != TokenKind::TOKEN_STRING && *t_kind != TokenKind::TOKEN_IDENTIFIER {
+                        println!("{}", parsed_token.kind);
                         scanner.advance();
                     }
                 } else {

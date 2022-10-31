@@ -62,13 +62,17 @@ enum ErrorAt {
 }
 
 struct ParseRule<'function, 'source, 'chunk> {
-    prefix: Option<&'function dyn Fn(&mut Parser<'source, 'chunk>, &mut Scanner<'source>)>,
-    infix: Option<&'function dyn Fn(&mut Parser<'source, 'chunk>, &mut Scanner<'source>)>,
+    prefix: Option<&'function dyn Fn(&mut Parser<'source, 'chunk>, &mut Scanner<'source>, bool)>,
+    infix: Option<&'function dyn Fn(&mut Parser<'source, 'chunk>, &mut Scanner<'source>, bool)>,
     precedence: Precedence,
 }
 
 // Functions to match each expression type
-fn grouping<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
+fn grouping<'source, 'chunk>(
+    parser: &mut Parser<'source, 'chunk>,
+    scanner: &mut Scanner<'source>,
+    _can_assign: bool,
+) {
     parser.expression(scanner);
     parser.consume(
         TokenKind::TOKEN_RIGHT_PAREN,
@@ -77,11 +81,19 @@ fn grouping<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut
     );
 }
 
-fn printing<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
+fn printing<'source, 'chunk>(
+    parser: &mut Parser<'source, 'chunk>,
+    scanner: &mut Scanner<'source>,
+    _can_assign: bool,
+) {
     parser.expression(scanner);
 }
 
-fn number<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
+fn number<'source, 'chunk>(
+    parser: &mut Parser<'source, 'chunk>,
+    scanner: &mut Scanner<'source>,
+    _can_assign: bool,
+) {
     let value = parser
         .previous
         .as_ref()
@@ -92,7 +104,11 @@ fn number<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut S
     parser.emit_constant(Value::number_value(value));
 }
 
-fn string<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
+fn string<'source, 'chunk>(
+    parser: &mut Parser<'source, 'chunk>,
+    scanner: &mut Scanner<'source>,
+    _can_assign: bool,
+) {
     let slice = parser.previous.as_ref().unwrap().slice;
     let len = slice.len();
     let string = slice[1..len - 1].to_string();
@@ -100,7 +116,11 @@ fn string<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut S
     parser.emit_constant(string_obj);
 }
 
-fn binary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
+fn binary<'source, 'chunk>(
+    parser: &mut Parser<'source, 'chunk>,
+    scanner: &mut Scanner<'source>,
+    _can_assign: bool,
+) {
     let operator_type = parser.previous.as_ref().unwrap().kind.clone();
     let rule = get_rule(operator_type);
     let prec = rule.precedence as usize;
@@ -121,7 +141,11 @@ fn binary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut S
     }
 }
 
-fn literal<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
+fn literal<'source, 'chunk>(
+    parser: &mut Parser<'source, 'chunk>,
+    scanner: &mut Scanner<'source>,
+    _can_assign: bool,
+) {
     match parser.previous.as_ref().unwrap().kind {
         TOKEN_TRUE => parser.emit_byte(OpCode::OP_TRUE),
         TOKEN_FALSE => parser.emit_byte(OpCode::OP_FALSE),
@@ -130,7 +154,11 @@ fn literal<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut 
     }
 }
 
-fn unary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Scanner<'source>) {
+fn unary<'source, 'chunk>(
+    parser: &mut Parser<'source, 'chunk>,
+    scanner: &mut Scanner<'source>,
+    _can_assign: bool,
+) {
     let operator_type = parser.previous.as_ref().unwrap().kind.clone();
 
     // Compile the operand
@@ -145,6 +173,24 @@ fn unary<'source, 'chunk>(parser: &mut Parser<'source, 'chunk>, scanner: &mut Sc
             parser.emit_byte(OpCode::OP_NOT);
         }
         _ => {}
+    }
+}
+
+fn variable<'source, 'chunk>(
+    parser: &mut Parser<'source, 'chunk>,
+    scanner: &mut Scanner<'source>,
+    can_assign: bool,
+) {
+    let index = parser.identifier_constant_prev();
+
+    // Set variable
+    if can_assign && parser.match_token(TOKEN_EQUAL, scanner) {
+        parser.expression(scanner);
+        parser.emit_byte(OpCode::OP_SET_GLOBAL(index));
+    }
+    // Get variable
+    else {
+        parser.emit_byte(OpCode::OP_GET_GLOBAL(index));
     }
 }
 
@@ -173,7 +219,11 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         loop {
             let token = scanner.scan_token();
 
-            if token.kind != TokenKind::TOKEN_NUMBER {
+            // TODO: fix scanner bandade
+            if token.kind != TokenKind::TOKEN_NUMBER
+                && token.kind != TokenKind::TOKEN_STRING
+                && token.kind != TokenKind::TOKEN_IDENTIFIER
+            {
                 scanner.advance();
             }
 
@@ -209,15 +259,15 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.had_error = true;
     }
 
+    /// Compare the current token's kind to the given 'kind' ; if they are the same, advance. Otherwise
+    /// print and return an error.
     fn consume(&mut self, kind: TokenKind, message: &'source str, scanner: &mut Scanner<'source>) {
-        match self.current.as_ref().unwrap().kind {
-            kind => {
-                self.advance(scanner);
-                return;
-            }
-            _ => {
-                self.error_at(ErrorAt::Current);
-            }
+        let current = self.current.as_ref().unwrap();
+        if current.kind == kind {
+            self.advance(scanner);
+        } else {
+            eprintln!("{}", message);
+            self.error_at(ErrorAt::Current);
         }
     }
 
@@ -244,8 +294,82 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.emit_byte(OP_PRINT);
     }
 
+    /// An expression followed by a semicolon. How you write an expression in a context where a statement is
+    /// expected.
+    fn expression_statement(&mut self, scanner: &mut Scanner<'source>) {
+        self.expression(scanner);
+        self.consume(TOKEN_SEMICOLON, "Expect ';' after expression.", scanner);
+        self.emit_byte(OpCode::OP_POP);
+    }
+
     fn declaration(&mut self, scanner: &mut Scanner<'source>) {
-        self.statement(scanner);
+        if self.match_token(TOKEN_VAR, scanner) {
+            self.var_declaraiton(scanner);
+        } else {
+            self.statement(scanner);
+        }
+
+        if self.panic_mode {
+            self.synchronize(scanner);
+        }
+    }
+
+    fn var_declaraiton(&mut self, scanner: &mut Scanner<'source>) {
+        let global: usize = self.parse_variable("Expect variable name.", scanner);
+
+        if self.match_token(TOKEN_EQUAL, scanner) {
+            self.expression(scanner);
+        } else {
+            self.emit_byte(OpCode::OP_NIL)
+        }
+        self.consume(
+            TOKEN_SEMICOLON,
+            "Expect ';' after variable declaration.",
+            scanner,
+        );
+
+        self.define_variable(global);
+    }
+
+    /// Continue to advance the scanner until a strong token is recognized.
+    fn synchronize(&mut self, scanner: &mut Scanner<'source>) {
+        self.panic_mode = false;
+
+        loop {
+            if let Some(current) = &self.current {
+                match current.kind {
+                    TOKEN_EOF => {
+                        break;
+                    }
+                    TOKEN_CLASS => {
+                        return;
+                    }
+                    TOKEN_FUN => {
+                        return;
+                    }
+                    TOKEN_VAR => {
+                        return;
+                    }
+                    TOKEN_FOR => {
+                        return;
+                    }
+                    TOKEN_IF => {
+                        return;
+                    }
+                    TOKEN_WHILE => {
+                        return;
+                    }
+                    TOKEN_PRINT => {
+                        return;
+                    }
+                    TOKEN_RETURN => {
+                        return;
+                    }
+                    _ => {} // do nothing
+                }
+                self.advance(scanner);
+            }
+        }
     }
 
     fn statement(&mut self, scanner: &mut Scanner<'source>) {
@@ -254,7 +378,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                 TOKEN_PRINT => {
                     self.print_statement(scanner);
                 }
-                _ => {}
+                _ => self.expression_statement(scanner),
             }
         }
     }
@@ -265,7 +389,8 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
 
         let prefix_rule = get_rule(prev_kind).prefix;
         if let Some(rule) = prefix_rule {
-            rule(self, scanner);
+            let can_assign: bool = precedence <= Precedence::PREC_ASSIGNMENT;
+            rule(self, scanner, can_assign);
 
             while precedence <= get_rule(self.current.as_ref().unwrap().kind.clone()).precedence {
                 self.advance(scanner);
@@ -273,13 +398,45 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                 let prev = self.previous.as_ref().unwrap().kind.clone();
                 let infix_rule = get_rule(prev).infix;
                 if let Some(rule) = infix_rule {
-                    rule(self, scanner);
+                    rule(self, scanner, can_assign);
+                }
+
+                if can_assign && self.match_token(TOKEN_EQUAL, scanner) {
+                    eprint!("Invalid assignment target.");
                 }
             }
         } else {
             eprint!("Expect expression.");
             return;
         }
+    }
+
+    /// Outputs the bytecode instruction that defines the new variable and stores its initial value.
+    fn define_variable(&mut self, global_index: usize) {
+        self.emit_byte(OpCode::OP_DEFINE_GLOBAL(global_index));
+    }
+
+    fn parse_variable(
+        &mut self,
+        error_message: &'static str,
+        scanner: &mut Scanner<'source>,
+    ) -> usize {
+        self.consume(TOKEN_IDENTIFIER, error_message, scanner);
+        let index = self.identifier_constant_prev();
+        return index;
+    }
+
+    /// From a given token, allocate a new object. Add a constant to the current compiling chunk.
+    //fn identifier_constant(&mut self, token: &Token) -> usize {
+    //    let value = allocate_object(token.slice.to_string());
+    //    self.compiling_chunk.add_constant(value)
+    //}
+
+    fn identifier_constant_prev(&mut self) -> usize {
+        let token = self.previous.as_ref().unwrap();
+        let value = allocate_object(token.slice.to_string());
+        let index = self.compiling_chunk.add_constant(value);
+        return index;
     }
 
     fn end_compiler(&mut self) {
@@ -418,7 +575,7 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
             precedence: Precedence::PREC_COMPARISON,
         },
         TOKEN_IDENTIFIER => ParseRule {
-            prefix: None,
+            prefix: Some(&variable),
             infix: None,
             precedence: Precedence::PREC_NONE,
         },

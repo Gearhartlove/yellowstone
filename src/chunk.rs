@@ -2,7 +2,7 @@ use crate::value::Value;
 
 /// Yellowstone VM byte-code instructions.
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum OpCode {
     OP_CONSTANT(Value),
     OP_NIL,
@@ -20,6 +20,10 @@ pub enum OpCode {
     OP_MULTIPLY,
     OP_DIVIDE,
     OP_PRINT,
+    OP_POP,
+    OP_DEFINE_GLOBAL(usize),
+    OP_GET_GLOBAL(usize),
+    OP_SET_GLOBAL(usize),
 }
 
 /// Contains the bytecode instructions as well as constants created from parsing tokens.
@@ -51,6 +55,15 @@ impl Chunk {
         self.constants.push(constant);
         let index = self.constants.len() - 1;
         return index;
+    }
+
+    /// With a provided index, get the key to a constant value in the current chunk, stored in the VM's hashmap.
+    pub fn get_constant_name(&self, index: &usize) -> Result<String, ()> {
+        if let Some(value) = self.constants.get(*index) {
+            Ok(value.as_string().unwrap())
+        } else {
+            Err(())
+        }
     }
 }
 

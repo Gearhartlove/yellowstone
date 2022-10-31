@@ -3,6 +3,7 @@ use crate::compiler::compile;
 use crate::debug::disassemble_chunk;
 use crate::error::InterpretError;
 use crate::error::InterpretError::INTERPRET_RUNTIME_ERROR;
+use crate::table::Table;
 use crate::value::{allocate_object, ObjectHandler, Value};
 use std::collections::LinkedList;
 use std::rc::Rc;
@@ -23,6 +24,7 @@ pub struct VM {
     /// instruction pointer, points at bytecode about to be executed
     pub ip: usize,
     pub stack: Vec<Value>,
+    pub table: Table,
     pub objects: LinkedList<Rc<dyn ObjectHandler>>,
 }
 
@@ -97,7 +99,6 @@ impl VM {
     pub fn run(&mut self) -> Result<Option<Value>, InterpretError> {
         // if debug flag enabled, print each instruction before execution
         if VM::DEBUG_EXECUTION_TRACING {
-            println!("           ");
             for val in self.stack.iter() {
                 println!("[{:?}]", val);
             }
@@ -157,6 +158,48 @@ impl VM {
                     self.push(Value::bool_val(Value::values_equal(a, b)));
                     Ok(())
                 }
+                OP_POP => {
+                    self.pop();
+                    Ok(())
+                }
+                OP_DEFINE_GLOBAL(index) => {
+                    let name = self.chunk.get_constant_name(&index).unwrap();
+                    let value = self.pop();
+                    self.table.insert(name, value);
+                    Ok(())
+                }
+                OP_GET_GLOBAL(index) => {
+                    let key = self.chunk.get_constant_name(&index).unwrap();
+                    let table_value = self.table.get(key.as_str());
+                    match table_value {
+                        Some(value) => {
+                            let stack_value = value.clone();
+                            self.push(stack_value);
+                            Ok(())
+                        }
+                        None => {
+                            eprint!("Undefined variable: {}", key);
+                            Err(INTERPRET_RUNTIME_ERROR)
+                        }
+                    }
+                }
+                // TODO: debug, do I ever set the value
+                OP_SET_GLOBAL(index) => {
+                    let key = self.chunk.get_constant_name(&index).unwrap();
+                    let table_value = self.table.get(key.as_str());
+                    match table_value {
+                        None => {
+                            eprintln!("Undefined variable: {}", key);
+                            Err(INTERPRET_RUNTIME_ERROR)
+                        }
+                        _ => {
+                            let updated_value = self.peek(0).unwrap().clone();
+                            self.table.delete(key.as_str());
+                            let _ = self.table.insert(key, updated_value);
+                            Ok(())
+                        }
+                    }
+                }
                 OP_FALSE => {
                     self.push(Value::bool_val(false));
                     Ok(())
@@ -200,17 +243,10 @@ impl VM {
         }
     }
 
-    fn read_byte(&mut self) -> &OpCode {
-        let instruction = self.chunk.code.get(self.ip);
-        match instruction {
-            None => {
-                unimplemented!()
-            }
-            Some(instruction) => {
-                self.ip += 1;
-                return instruction;
-            }
-        }
+    fn read_byte(&mut self) -> OpCode {
+        let instruction = self.chunk.code.get(self.ip).unwrap().clone();
+        self.ip += 1;
+        return instruction;
     }
 
     pub fn with_chunk(mut self, chunk: Chunk) -> Self {
