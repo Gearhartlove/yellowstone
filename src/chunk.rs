@@ -2,7 +2,7 @@ use crate::value::Value;
 
 /// Yellowstone VM byte-code instructions.
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum OpCode {
     OP_CONSTANT(Value),
     OP_NIL,
@@ -20,6 +20,10 @@ pub enum OpCode {
     OP_MULTIPLY,
     OP_DIVIDE,
     OP_PRINT,
+    OP_POP,
+    OP_DEFINE_GLOBAL(usize),
+    OP_GET_GLOBAL(usize),
+    OP_SET_GLOBAL(usize),
 }
 
 /// Contains the bytecode instructions as well as constants created from parsing tokens.
@@ -52,6 +56,15 @@ impl Chunk {
         let index = self.constants.len() - 1;
         return index;
     }
+
+    /// With a provided index, get the key to a constant value in the current chunk, stored in the VM's hashmap.
+    pub fn get_constant_name(&self, index: &usize) -> Result<String, ()> {
+        if let Some(value) = self.constants.get(*index) {
+            Ok(value.as_string().unwrap())
+        } else {
+            Err(())
+        }
+    }
 }
 
 /// Each line number is separated by a '\_', the numbers in between the '\_' are the number of
@@ -72,13 +85,11 @@ fn encode(chunk: &mut Chunk, curr_line: usize) {
 
     if line_count == 0 {
         new_line(chunk, curr_line);
-    }
-    else {
+    } else {
         let same_line: bool = line_count == curr_line;
         if !same_line {
             new_line(chunk, curr_line);
-        }
-        else if same_line {
+        } else if same_line {
             chunk.lines.pop();
             let mut num = "".to_string();
             println!("{}", num);

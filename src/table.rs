@@ -1,8 +1,8 @@
+use crate::util::grow_capacity;
+use crate::value::Value;
 use core::panic;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
-use crate::util::grow_capacity;
-use crate::value::Value;
 
 // ################################################################
 // Table
@@ -11,7 +11,7 @@ use crate::value::Value;
 const TABLE_MAX_LOAD: f32 = 0.75;
 
 #[derive(Debug, Copy, Clone)]
-enum TableError {
+pub enum TableError {
     InsertKeyError,
     AddTableError,
 }
@@ -19,8 +19,8 @@ enum TableError {
 impl Display for TableError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let message = match self {
-            TableError::InsertKeyError => { "cannot insert key into table." }
-            TableError::AddTableError => { "cannot add table to other table." }
+            TableError::InsertKeyError => "cannot insert key into table.",
+            TableError::AddTableError => "cannot add table to other table.",
         };
 
         write!(f, "table error: {}", message)
@@ -28,7 +28,7 @@ impl Display for TableError {
 }
 
 #[derive(Default)]
-struct Table {
+pub struct Table {
     count: usize,
     capacity: usize,
     entries: Vec<Option<Entry>>,
@@ -44,51 +44,44 @@ impl Table {
     }
 
     /// Returns a value given a key.
-    fn get(&mut self, key: &str) -> Option<&Value> {
+    pub fn get(&mut self, key: &str) -> Option<&Value> {
         if self.count == 0 {
             return None;
         }
 
-        let entry =
-            Table::find_entry(&mut self.entries, &key, self.capacity);
+        let entry = Table::find_entry(&mut self.entries, &key, self.capacity);
 
         return match entry {
-            Some(i) => {
-                match &self.entries.get(i).unwrap() {
-                    Some(e) => {
-                        Some(&e.value)
-                     },
-                    None => { None },
-                }
-            }
-            None => { None }
-        }
+            Some(i) => match &self.entries.get(i).unwrap() {
+                Some(e) => Some(&e.value),
+                None => None,
+            },
+            None => None,
+        };
     }
-    
-    fn get_unchecked(&mut self, key: &str) -> &Value {
+
+    pub fn get_unchecked(&mut self, key: &str) -> &Value {
         if self.count == 0 {
             panic!("{key} not found.");
         }
 
-        let entry =
-            Table::find_entry(&mut self.entries, key, self.capacity);
+        let entry = Table::find_entry(&mut self.entries, key, self.capacity);
 
         return match entry {
-            Some(i) => {
-                &self.entries.get(i).unwrap().as_ref().unwrap().value
+            Some(i) => &self.entries.get(i).unwrap().as_ref().unwrap().value,
+            None => {
+                panic!("{key} not found.")
             }
-            None => { panic!("{key} not found.") }
-        }
+        };
     }
 
-    fn delete(&mut self, key: &str) -> bool {
+    pub fn delete(&mut self, key: &str) -> bool {
         if self.count == 0 {
             return false;
         }
 
         // Find the entry.
-        let find =
-            Table::find_entry(&mut self.entries, key, self.capacity);
+        let find = Table::find_entry(&mut self.entries, key, self.capacity);
         return match find {
             // Place a tombstone in the entry.
             Some(i) => {
@@ -96,13 +89,13 @@ impl Table {
                 entry.is_tombstone = true;
                 true
             }
-            None => { false }
+            None => false,
         };
     }
 
     /// Inserts an entity into the hash map. Resizes
     /// the table if the capacity has been reached.
-    fn insert(&mut self, key: impl ToString, value: Value) -> Result<(), Box<TableError>> {
+    pub fn insert(&mut self, key: impl ToString, value: Value) -> Result<(), Box<TableError>> {
         let key = key.to_string();
         // Grow the capacity if the capacity has been reached.
         if (self.count + 1) as f32 > (self.capacity as f32) * TABLE_MAX_LOAD {
@@ -111,7 +104,7 @@ impl Table {
         }
 
         // Check if the entry is already in the hash map
-        // Should always find a spot in the hashmap to insert the new elements. 
+        // Should always find a spot in the hashmap to insert the new elements.
         let bucket_index = Table::find_entry(&mut self.entries, &key, self.capacity);
         let entry = Entry::new(key, value);
         *self.entries.get_mut(bucket_index.unwrap()).unwrap() = Some(entry);
@@ -120,8 +113,8 @@ impl Table {
     }
 
     /// Finds the first occurrence of the key or the first empty bucket in the hash table with
-    /// linear probing. 
-    fn find_entry(map: &mut Vec<Option<Entry>>, key: &str , capacity: usize) -> Option<usize> {
+    /// linear probing.
+    fn find_entry(map: &mut Vec<Option<Entry>>, key: &str, capacity: usize) -> Option<usize> {
         let hash = fnv1a(key.as_bytes());
         let mut i = index(hash, capacity);
         let start_i = i;
@@ -129,10 +122,10 @@ impl Table {
             let entry = &map[i];
             match entry {
                 // The hash table DOES NOT contain the entry
-                None => { return Some(i) }
+                None => return Some(i),
                 // The hash table DOES contain the entry
                 Some(e) => {
-                    if e.key == *key && !e.is_tombstone  {
+                    if e.key == *key && !e.is_tombstone {
                         return Some(i);
                     }
                 }
@@ -143,7 +136,6 @@ impl Table {
             if start_i == i {
                 return None;
             }
-
         }
     }
 
@@ -152,8 +144,7 @@ impl Table {
     /// new empty array.
     fn adjust_capacity(&mut self, new_capacity: usize) {
         // Create an 'array' of Vec<Option<Entry>> of the None enum with the new capacity.
-        let mut new: Vec<Option<Entry>> =
-            (0..new_capacity).map(|_| None).collect();
+        let mut new: Vec<Option<Entry>> = (0..new_capacity).map(|_| None).collect();
 
         // Reset capacity.
         self.count = 0;
@@ -165,17 +156,16 @@ impl Table {
                     if !e.is_tombstone {
                         // Will always return usize because the array was just initialized.
                         let destination = Table::find_entry(&mut new, &e.key, self.capacity);
-                            *new.get_mut(destination.unwrap()).unwrap() = old_entry.take();
-                            self.count = self.count + 1;
+                        *new.get_mut(destination.unwrap()).unwrap() = old_entry.take();
+                        self.count = self.count + 1;
                     }
                 }
-                None => { continue }
+                None => continue,
             }
         }
 
         self.entries = new;
         self.capacity = new_capacity;
-
     }
 
     /// Adds every entry from table A to table B, returns an error if conflicts are present.
@@ -184,11 +174,11 @@ impl Table {
             match entry {
                 None => {}
                 Some(_) => {
-                    let take  = entry.take().unwrap();
+                    let take = entry.take().unwrap();
                     let result = to.insert(take.key, take.value);
                     match result {
                         Ok(_) => {}
-                        Err(_) => { return Err(TableError::AddTableError)}
+                        Err(_) => return Err(TableError::AddTableError),
                     }
                 }
             }
@@ -231,11 +221,11 @@ pub fn fnv1a(bytes: &[u8]) -> u64 {
         hash = hash.wrapping_mul(0x100000001b3);
     }
 
-    return hash
+    return hash;
 }
 
 fn index(hash: u64, capacity: usize) -> usize {
-    (hash % capacity as u64 ) as usize
+    (hash % capacity as u64) as usize
 }
 
 mod tests {
@@ -430,62 +420,194 @@ mod tests {
         assert_eq!(fnv1a(b"feedfacedeadbeef"), 0xcac54572bb1a6fc8);
         assert_eq!(fnv1a(b"feedfacedeadbeef\0"), 0xa7a4c9f3edebf0d8);
         assert_eq!(fnv1a(b"line 1\nline 2\nline 3"), 0x7829851fac17b143);
-        assert_eq!(fnv1a(b"chongo <Landon Curt Noll> /\\../\\"), 0x2c8f4c9af81bcf06);
-        assert_eq!(fnv1a(b"chongo <Landon Curt Noll> /\\../\\\0"), 0xd34e31539740c732);
-        assert_eq!(fnv1a(b"chongo (Landon Curt Noll) /\\../\\"), 0x3605a2ac253d2db1);
-        assert_eq!(fnv1a(b"chongo (Landon Curt Noll) /\\../\\\0"), 0x08c11b8346f4a3c3);
-        assert_eq!(fnv1a(b"http://antwrp.gsfc.nasa.gov/apod/astropix.html"), 0x6be396289ce8a6da);
-        assert_eq!(fnv1a(b"http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash"), 0xd9b957fb7fe794c5);
+        assert_eq!(
+            fnv1a(b"chongo <Landon Curt Noll> /\\../\\"),
+            0x2c8f4c9af81bcf06
+        );
+        assert_eq!(
+            fnv1a(b"chongo <Landon Curt Noll> /\\../\\\0"),
+            0xd34e31539740c732
+        );
+        assert_eq!(
+            fnv1a(b"chongo (Landon Curt Noll) /\\../\\"),
+            0x3605a2ac253d2db1
+        );
+        assert_eq!(
+            fnv1a(b"chongo (Landon Curt Noll) /\\../\\\0"),
+            0x08c11b8346f4a3c3
+        );
+        assert_eq!(
+            fnv1a(b"http://antwrp.gsfc.nasa.gov/apod/astropix.html"),
+            0x6be396289ce8a6da
+        );
+        assert_eq!(
+            fnv1a(b"http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash"),
+            0xd9b957fb7fe794c5
+        );
         assert_eq!(fnv1a(b"http://epod.usra.edu/"), 0x05be33da04560a93);
         assert_eq!(fnv1a(b"http://exoplanet.eu/"), 0x0957f1577ba9747c);
         assert_eq!(fnv1a(b"http://hvo.wr.usgs.gov/cam3/"), 0xda2cc3acc24fba57);
-        assert_eq!(fnv1a(b"http://hvo.wr.usgs.gov/cams/HMcam/"), 0x74136f185b29e7f0);
-        assert_eq!(fnv1a(b"http://hvo.wr.usgs.gov/kilauea/update/deformation.html"), 0xb2f2b4590edb93b2);
-        assert_eq!(fnv1a(b"http://hvo.wr.usgs.gov/kilauea/update/images.html"), 0xb3608fce8b86ae04);
-        assert_eq!(fnv1a(b"http://hvo.wr.usgs.gov/kilauea/update/maps.html"), 0x4a3a865079359063);
-        assert_eq!(fnv1a(b"http://hvo.wr.usgs.gov/volcanowatch/current_issue.html"), 0x5b3a7ef496880a50);
+        assert_eq!(
+            fnv1a(b"http://hvo.wr.usgs.gov/cams/HMcam/"),
+            0x74136f185b29e7f0
+        );
+        assert_eq!(
+            fnv1a(b"http://hvo.wr.usgs.gov/kilauea/update/deformation.html"),
+            0xb2f2b4590edb93b2
+        );
+        assert_eq!(
+            fnv1a(b"http://hvo.wr.usgs.gov/kilauea/update/images.html"),
+            0xb3608fce8b86ae04
+        );
+        assert_eq!(
+            fnv1a(b"http://hvo.wr.usgs.gov/kilauea/update/maps.html"),
+            0x4a3a865079359063
+        );
+        assert_eq!(
+            fnv1a(b"http://hvo.wr.usgs.gov/volcanowatch/current_issue.html"),
+            0x5b3a7ef496880a50
+        );
         assert_eq!(fnv1a(b"http://neo.jpl.nasa.gov/risk/"), 0x48fae3163854c23b);
         assert_eq!(fnv1a(b"http://norvig.com/21-days.html"), 0x07aaa640476e0b9a);
-        assert_eq!(fnv1a(b"http://primes.utm.edu/curios/home.php"), 0x2f653656383a687d);
+        assert_eq!(
+            fnv1a(b"http://primes.utm.edu/curios/home.php"),
+            0x2f653656383a687d
+        );
         assert_eq!(fnv1a(b"http://slashdot.org/"), 0xa1031f8e7599d79c);
-        assert_eq!(fnv1a(b"http://tux.wr.usgs.gov/Maps/155.25-19.5.html"), 0xa31908178ff92477);
-        assert_eq!(fnv1a(b"http://volcano.wr.usgs.gov/kilaueastatus.php"), 0x097edf3c14c3fb83);
-        assert_eq!(fnv1a(b"http://www.avo.alaska.edu/activity/Redoubt.php"), 0xb51ca83feaa0971b);
+        assert_eq!(
+            fnv1a(b"http://tux.wr.usgs.gov/Maps/155.25-19.5.html"),
+            0xa31908178ff92477
+        );
+        assert_eq!(
+            fnv1a(b"http://volcano.wr.usgs.gov/kilaueastatus.php"),
+            0x097edf3c14c3fb83
+        );
+        assert_eq!(
+            fnv1a(b"http://www.avo.alaska.edu/activity/Redoubt.php"),
+            0xb51ca83feaa0971b
+        );
         assert_eq!(fnv1a(b"http://www.dilbert.com/fast/"), 0xdd3c0d96d784f2e9);
-        assert_eq!(fnv1a(b"http://www.fourmilab.ch/gravitation/orbits/"), 0x86cd26a9ea767d78);
+        assert_eq!(
+            fnv1a(b"http://www.fourmilab.ch/gravitation/orbits/"),
+            0x86cd26a9ea767d78
+        );
         assert_eq!(fnv1a(b"http://www.fpoa.net/"), 0xe6b215ff54a30c18);
-        assert_eq!(fnv1a(b"http://www.ioccc.org/index.html"), 0xec5b06a1c5531093);
-        assert_eq!(fnv1a(b"http://www.isthe.com/cgi-bin/number.cgi"), 0x45665a929f9ec5e5);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/bio.html"), 0x8c7609b4a9f10907);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/index.html"), 0x89aac3a491f0d729);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/src/calc/lucas-calc"), 0x32ce6b26e0f4a403);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/tech/astro/venus2004.html"), 0x614ab44e02b53e01);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/tech/astro/vita.html"), 0xfa6472eb6eef3290);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/tech/comp/c/expert.html"), 0x9e5d75eb1948eb6a);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/tech/comp/calc/index.html"), 0xb6d12ad4a8671852);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/tech/comp/fnv/index.html"), 0x88826f56eba07af1);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/tech/math/number/howhigh.html"), 0x44535bf2645bc0fd);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/tech/math/number/number.html"), 0x169388ffc21e3728);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/tech/math/prime/mersenne.html"), 0xf68aac9e396d8224);
-        assert_eq!(fnv1a(b"http://www.isthe.com/chongo/tech/math/prime/mersenne.html#largest"), 0x8e87d7e7472b3883);
-        assert_eq!(fnv1a(b"http://www.lavarnd.org/cgi-bin/corpspeak.cgi"), 0x295c26caa8b423de);
-        assert_eq!(fnv1a(b"http://www.lavarnd.org/cgi-bin/haiku.cgi"), 0x322c814292e72176);
-        assert_eq!(fnv1a(b"http://www.lavarnd.org/cgi-bin/rand-none.cgi"), 0x8a06550eb8af7268);
-        assert_eq!(fnv1a(b"http://www.lavarnd.org/cgi-bin/randdist.cgi"), 0xef86d60e661bcf71);
-        assert_eq!(fnv1a(b"http://www.lavarnd.org/index.html"), 0x9e5426c87f30ee54);
-        assert_eq!(fnv1a(b"http://www.lavarnd.org/what/nist-test.html"), 0xf1ea8aa826fd047e);
+        assert_eq!(
+            fnv1a(b"http://www.ioccc.org/index.html"),
+            0xec5b06a1c5531093
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/cgi-bin/number.cgi"),
+            0x45665a929f9ec5e5
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/bio.html"),
+            0x8c7609b4a9f10907
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/index.html"),
+            0x89aac3a491f0d729
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/src/calc/lucas-calc"),
+            0x32ce6b26e0f4a403
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/tech/astro/venus2004.html"),
+            0x614ab44e02b53e01
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/tech/astro/vita.html"),
+            0xfa6472eb6eef3290
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/tech/comp/c/expert.html"),
+            0x9e5d75eb1948eb6a
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/tech/comp/calc/index.html"),
+            0xb6d12ad4a8671852
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/tech/comp/fnv/index.html"),
+            0x88826f56eba07af1
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/tech/math/number/howhigh.html"),
+            0x44535bf2645bc0fd
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/tech/math/number/number.html"),
+            0x169388ffc21e3728
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/tech/math/prime/mersenne.html"),
+            0xf68aac9e396d8224
+        );
+        assert_eq!(
+            fnv1a(b"http://www.isthe.com/chongo/tech/math/prime/mersenne.html#largest"),
+            0x8e87d7e7472b3883
+        );
+        assert_eq!(
+            fnv1a(b"http://www.lavarnd.org/cgi-bin/corpspeak.cgi"),
+            0x295c26caa8b423de
+        );
+        assert_eq!(
+            fnv1a(b"http://www.lavarnd.org/cgi-bin/haiku.cgi"),
+            0x322c814292e72176
+        );
+        assert_eq!(
+            fnv1a(b"http://www.lavarnd.org/cgi-bin/rand-none.cgi"),
+            0x8a06550eb8af7268
+        );
+        assert_eq!(
+            fnv1a(b"http://www.lavarnd.org/cgi-bin/randdist.cgi"),
+            0xef86d60e661bcf71
+        );
+        assert_eq!(
+            fnv1a(b"http://www.lavarnd.org/index.html"),
+            0x9e5426c87f30ee54
+        );
+        assert_eq!(
+            fnv1a(b"http://www.lavarnd.org/what/nist-test.html"),
+            0xf1ea8aa826fd047e
+        );
         assert_eq!(fnv1a(b"http://www.macosxhints.com/"), 0x0babaf9a642cb769);
         assert_eq!(fnv1a(b"http://www.mellis.com/"), 0x4b3341d4068d012e);
-        assert_eq!(fnv1a(b"http://www.nature.nps.gov/air/webcams/parks/havoso2alert/havoalert.cfm"), 0xd15605cbc30a335c);
-        assert_eq!(fnv1a(b"http://www.nature.nps.gov/air/webcams/parks/havoso2alert/timelines_24.cfm"), 0x5b21060aed8412e5);
+        assert_eq!(
+            fnv1a(b"http://www.nature.nps.gov/air/webcams/parks/havoso2alert/havoalert.cfm"),
+            0xd15605cbc30a335c
+        );
+        assert_eq!(
+            fnv1a(b"http://www.nature.nps.gov/air/webcams/parks/havoso2alert/timelines_24.cfm"),
+            0x5b21060aed8412e5
+        );
         assert_eq!(fnv1a(b"http://www.paulnoll.com/"), 0x45e2cda1ce6f4227);
         assert_eq!(fnv1a(b"http://www.pepysdiary.com/"), 0x50ae3745033ad7d4);
-        assert_eq!(fnv1a(b"http://www.sciencenews.org/index/home/activity/view"), 0xaa4588ced46bf414);
-        assert_eq!(fnv1a(b"http://www.skyandtelescope.com/"), 0xc1b0056c4a95467e);
-        assert_eq!(fnv1a(b"http://www.sput.nl/~rob/sirius.html"), 0x56576a71de8b4089);
+        assert_eq!(
+            fnv1a(b"http://www.sciencenews.org/index/home/activity/view"),
+            0xaa4588ced46bf414
+        );
+        assert_eq!(
+            fnv1a(b"http://www.skyandtelescope.com/"),
+            0xc1b0056c4a95467e
+        );
+        assert_eq!(
+            fnv1a(b"http://www.sput.nl/~rob/sirius.html"),
+            0x56576a71de8b4089
+        );
         assert_eq!(fnv1a(b"http://www.systemexperts.com/"), 0xbf20965fa6dc927e);
-        assert_eq!(fnv1a(b"http://www.tq-international.com/phpBB3/index.php"), 0x569f8383c2040882);
-        assert_eq!(fnv1a(b"http://www.travelquesttours.com/index.htm"), 0xe1e772fba08feca0);
-        assert_eq!(fnv1a(b"http://www.wunderground.com/global/stations/89606.html"), 0x4ced94af97138ac4);
+        assert_eq!(
+            fnv1a(b"http://www.tq-international.com/phpBB3/index.php"),
+            0x569f8383c2040882
+        );
+        assert_eq!(
+            fnv1a(b"http://www.travelquesttours.com/index.htm"),
+            0xe1e772fba08feca0
+        );
+        assert_eq!(
+            fnv1a(b"http://www.wunderground.com/global/stations/89606.html"),
+            0x4ced94af97138ac4
+        );
     }
 }

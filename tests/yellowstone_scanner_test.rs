@@ -2,9 +2,9 @@ extern crate yellowstone;
 
 use yellowstone::assert_tokens_are;
 use yellowstone::scanner::Scanner;
+use yellowstone::scanner::Token;
 use yellowstone::scanner::TokenKind;
 use yellowstone::scanner::TokenKind::*;
-use yellowstone::scanner::Token;
 
 #[test]
 fn tokenizer_basic_test() {
@@ -15,12 +15,19 @@ fn tokenizer_basic_test() {
 
 #[test]
 fn tokenizer_paren_test() {
-    assert_tokens_are!("(1)", TOKEN_LEFT_PAREN, TOKEN_NUMBER, TOKEN_RIGHT_PAREN, TOKEN_EOF);
+    assert_tokens_are!(
+        "(1)",
+        TOKEN_LEFT_PAREN,
+        TOKEN_NUMBER,
+        TOKEN_RIGHT_PAREN,
+        TOKEN_EOF
+    );
 }
 
 #[test]
 fn tokenizer_additive_test() {
-    assert_tokens_are!("1 + 1", TOKEN_NUMBER, TOKEN_PLUS, TOKEN_NUMBER, TOKEN_EOF);
+    //assert_tokens_are!("1 + 1", TOKEN_NUMBER, TOKEN_PLUS, TOKEN_NUMBER, TOKEN_EOF);
+    assert_tokens_are!("1+1", TOKEN_NUMBER, TOKEN_PLUS, TOKEN_NUMBER, TOKEN_EOF);
 }
 
 #[test]
@@ -40,7 +47,41 @@ fn tokenizer_divide_test() {
 
 #[test]
 fn tokenizer_expression_test() {
-    assert_tokens_are!("print 1 + 1", TOKEN_PRINT, TOKEN_NUMBER, TOKEN_PLUS, TOKEN_NUMBER, TOKEN_EOF);
+    assert_tokens_are!(
+        "print 1 + 1",
+        TOKEN_PRINT,
+        TOKEN_NUMBER,
+        TOKEN_PLUS,
+        TOKEN_NUMBER,
+        TOKEN_EOF
+    );
+}
+
+#[test]
+fn tokenizer_variable_test() {
+    assert_tokens_are!(
+        "var beverage = \"cafe au lait\"; 
+        var breakfast = \"beignets with \" + beverage;
+        print breakfast;",
+        TOKEN_VAR,
+        TOKEN_IDENTIFIER,
+        TOKEN_EQUAL,
+        TOKEN_STRING,
+        TOKEN_SEMICOLON,
+        //
+        TOKEN_VAR,
+        TOKEN_IDENTIFIER,
+        TOKEN_EQUAL,
+        TOKEN_STRING,
+        TOKEN_PLUS,
+        TOKEN_IDENTIFIER,
+        TOKEN_SEMICOLON,
+        ////
+        TOKEN_PRINT,
+        TOKEN_IDENTIFIER,
+        TOKEN_SEMICOLON,
+        TOKEN_EOF
+    )
 }
 
 #[test]
@@ -68,7 +109,7 @@ fn peek_next_test() {
 }
 
 #[test]
-fn skip_whitespace_test() {    
+fn skip_whitespace_test() {
     let source = String::from("    Hi!");
     let mut sc = Scanner::new(&source);
     sc.skip_whitespace();
@@ -81,7 +122,7 @@ fn skip_whitespace_space_source_test() {
     let mut sc = Scanner::new(&source);
     sc.skip_whitespace();
     assert_eq!(None, sc.peek());
-    
+
     let source = String::from("\r\t");
     let mut sc = Scanner::new(&source);
     sc.skip_whitespace();
@@ -147,7 +188,6 @@ fn skip_whitespace_complex_test() {
     assert_eq!(None, sc.peek());
 }
 
-
 #[test]
 fn tokenize_string_test() {
     let source = String::from("\"yellowstone\"");
@@ -188,7 +228,7 @@ fn multi_line_string_test() {
 
 #[test]
 fn tokenize_number_test() {
-    let source = String::from("100"); 
+    let source = String::from("100");
     let mut sc = Scanner::new(&source);
     let num = sc.scan_token();
     assert_eq!("100", num.slice);
@@ -197,7 +237,7 @@ fn tokenize_number_test() {
 
 #[test]
 fn tokenize_number_decimal_test() {
-    let source = String::from("100.200"); 
+    let source = String::from("100.200");
     let mut sc = Scanner::new(&source);
     let num = sc.scan_token();
     assert_eq!("100.200", num.slice);
@@ -211,7 +251,6 @@ fn tokenize_identifier_test() {
     let token = sc.scan_token();
     assert_eq!("and", token.slice);
     assert_eq!(TokenKind::TOKEN_AND, token.kind);
-
 
     let source = String::from("class");
     let mut sc = Scanner::from(&source);
@@ -236,7 +275,7 @@ fn tokenize_identifier_test() {
     let token = sc.scan_token();
     assert_eq!("for", token.slice);
     assert_eq!(TokenKind::TOKEN_FOR, token.kind);
-    
+
     let source = String::from("fun");
     let mut sc = Scanner::from(&source);
     let token = sc.scan_token();
@@ -248,59 +287,58 @@ fn tokenize_identifier_test() {
     let token = sc.scan_token();
     assert_eq!("if", token.slice);
     assert_eq!(TokenKind::TOKEN_IF, token.kind);
-    
+
     let source = String::from("nil");
     let mut sc = Scanner::from(&source);
     let token = sc.scan_token();
     assert_eq!("nil", token.slice);
     assert_eq!(TokenKind::TOKEN_NIL, token.kind);
-    
+
     let source = String::from("or");
     let mut sc = Scanner::from(&source);
     let token = sc.scan_token();
     assert_eq!("or", token.slice);
     assert_eq!(TokenKind::TOKEN_OR, token.kind);
-    
+
     let source = String::from("print");
     let mut sc = Scanner::from(&source);
     let token = sc.scan_token();
     assert_eq!("print", token.slice);
     assert_eq!(TokenKind::TOKEN_PRINT, token.kind);
-    
+
     let source = String::from("return");
     let mut sc = Scanner::from(&source);
     let token = sc.scan_token();
     assert_eq!("return", token.slice);
     assert_eq!(TokenKind::TOKEN_RETURN, token.kind);
-    
+
     let source = String::from("super");
     let mut sc = Scanner::from(&source);
     let token = sc.scan_token();
     assert_eq!("super", token.slice);
     assert_eq!(TokenKind::TOKEN_SUPER, token.kind);
-    
+
     let source = String::from("this");
     let mut sc = Scanner::from(&source);
     let token = sc.scan_token();
     assert_eq!("this", token.slice);
     assert_eq!(TokenKind::TOKEN_THIS, token.kind);
-    
+
     let source = String::from("true");
     let mut sc = Scanner::from(&source);
     let token = sc.scan_token();
     assert_eq!("true", token.slice);
     assert_eq!(TokenKind::TOKEN_TRUE, token.kind);
-    
+
     let source = String::from("var");
     let mut sc = Scanner::from(&source);
     let token = sc.scan_token();
     assert_eq!("var", token.slice);
     assert_eq!(TokenKind::TOKEN_VAR, token.kind);
-    
+
     let source = String::from("while");
     let mut sc = Scanner::from(&source);
     let token = sc.scan_token();
     assert_eq!("while", token.slice);
     assert_eq!(TokenKind::TOKEN_WHILE, token.kind);
-    
 }
