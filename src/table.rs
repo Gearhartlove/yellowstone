@@ -97,9 +97,6 @@ impl Table {
     /// the table if the capacity has been reached.
     pub fn insert(&mut self, key: impl ToString, value: Value) -> Result<(), Box<TableError>> {
         // trim the \" on the front and back
-        let test = value.as_string().unwrap();  
-        println!("inserting: {:?}", test);
-        println!("inserting: {:?}", value);
         let key = key.to_string().as_str().trim_matches('\"').to_string();
         // Grow the capacity if the capacity has been reached.
         if (self.count + 1) as f32 > (self.capacity as f32) * TABLE_MAX_LOAD {

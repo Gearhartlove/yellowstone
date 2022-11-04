@@ -58,6 +58,25 @@ fn tokenizer_expression_test() {
 }
 
 #[test]
+fn tokenizer_global_var_managerie() {
+    let source = "
+        var lang = \"yellowstone\";
+        var num = 9;
+        var yes = true;
+        var nothing = nil;
+    ";
+
+    assert_tokens_are!(
+        source, 
+        TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_STRING, TOKEN_SEMICOLON,
+        TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_NUMBER, TOKEN_SEMICOLON,
+        TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_TRUE, TOKEN_SEMICOLON,
+        TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_NIL, TOKEN_SEMICOLON,
+        TOKEN_EOF
+    )
+}
+
+#[test]
 fn tokenizer_variable_test() {
     assert_tokens_are!(
         "var beverage = \"cafe au lait\"; 

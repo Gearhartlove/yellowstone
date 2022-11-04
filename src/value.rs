@@ -247,6 +247,7 @@ impl Value {
             let obj = self.as_obj().unwrap();
             Ok(obj.to_string().as_str().trim_matches('\"').to_string())
         } else {
+            eprintln!("Error: cannot convert type to a string. It is not an object.");
             Err(InterpretError::INTERPRET_RUNTIME_ERROR)
         }
     }

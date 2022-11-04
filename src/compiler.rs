@@ -223,6 +223,9 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
             if token.kind != TokenKind::TOKEN_NUMBER
                 && token.kind != TokenKind::TOKEN_STRING
                 && token.kind != TokenKind::TOKEN_IDENTIFIER
+                && token.kind != TokenKind::TOKEN_NIL
+                && token.kind != TokenKind::TOKEN_TRUE
+                && token.kind != TokenKind::TOKEN_FALSE
             {
                 scanner.advance();
             }

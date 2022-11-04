@@ -165,7 +165,7 @@ impl VM {
                 OP_DEFINE_GLOBAL(index) => {
                     let name = self.chunk.get_constant_name(&index).unwrap();
                     let value = self.pop();
-                    self.table.insert(name, value);
+                    let _ = self.table.insert(name, value);
                     Ok(())
                 }
                 OP_GET_GLOBAL(index) => {

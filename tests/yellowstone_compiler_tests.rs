@@ -97,17 +97,25 @@ fn global_var_declaration() {
     ";
     run_code(&mut vm, source);
 
-    assert_eq!(str_val(&mut vm, "lang"), Some(String::from("yellowstone")));
     assert_eq!(num_val(&mut vm, "num"), Some(9.));
+    assert_eq!(str_val(&mut vm, "lang"), Some(String::from("yellowstone")));
     assert_eq!(bool_val(&mut vm, "yes"), Some(true));
     assert_eq!(nil_val(&mut vm, "nothing"), Some(0.));
+
+    assert_eq!(num_val(&mut vm, "nonumber"), None);
+    assert_eq!(bool_val(&mut vm, "nobool"), None);
+    assert_eq!(nil_val(&mut vm, "nonil"), None);
+    assert_eq!(str_val(&mut vm, "nostr"), None);
 }
 
+// ################################################################################
 // Helper Functions
+// ################################################################################
 pub fn num_val(vm: &mut VM, variable_name: &'static str) -> Option<f32> {
     if let Some(value) = vm.table.get(variable_name) {
         match value.kind {
-            ValNumber => Some(value.as_number().unwrap()),
+            ValueKind::ValNumber => Some(value.as_number().unwrap()),
+            _ => { None }
         }
     } else {
         return None;
@@ -117,7 +125,8 @@ pub fn num_val(vm: &mut VM, variable_name: &'static str) -> Option<f32> {
 pub fn nil_val(vm: &mut VM, variable_name: &'static str) -> Option<f32> {
     if let Some(value) = vm.table.get(variable_name) {
         match value.kind {
-            ValNil => Some(value.as_number().unwrap()),
+            ValueKind::ValNil => Some(value.as_nil().unwrap()),
+            _ => { None }
         }
     } else {
         return None;
@@ -127,7 +136,8 @@ pub fn nil_val(vm: &mut VM, variable_name: &'static str) -> Option<f32> {
 pub fn bool_val(vm: &mut VM, variable_name: &'static str) -> Option<bool> {
     if let Some(value) = vm.table.get(variable_name) {
         match value.kind {
-            ValBool => Some(value.as_bool().unwrap()),
+            ValueKind::ValBool => Some(value.as_bool().unwrap()),
+            _ => { None }
         }
     } else {
         return None;
@@ -137,7 +147,8 @@ pub fn bool_val(vm: &mut VM, variable_name: &'static str) -> Option<bool> {
 pub fn str_val(vm: &mut VM, variable_name: &'static str) -> Option<String> {
     if let Some(value) = vm.table.get(variable_name) {
         match value.kind {
-            ValBool => Some(value.as_string().unwrap()),
+            ValueKind::ValObj => Some(value.as_string().unwrap()),
+            _ => { None }
         }
     } else {
         return None;
