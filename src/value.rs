@@ -102,9 +102,10 @@ impl PartialEq for Value {
             let b = self.as_bool().unwrap();
             a == b
         } else if self.is_obj() && other.is_obj() {
-            let a = self.as_bool().unwrap();
-            let b = self.as_bool().unwrap();
-            a == b
+            //let a = self.as_obj().unwrap();
+            //let b = self.as_obj().unwrap();
+            //a == b
+            todo!("no mechanism to compare raw objects yet")
         }
         else {
             false

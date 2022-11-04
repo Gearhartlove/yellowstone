@@ -79,13 +79,6 @@ fn compiler_precedence() {
     assert_eq!(result, Some(Value::number_value(-4.)));
 }
 
-//#[test]
-//fn print_statement() {
-//    let mut vm = VM::default();
-//    let source = "print \"Hello Yellowstone!\";";
-//    let result = run_code(&mut vm, source);
-//}
-
 #[test]
 fn global_var_declaration() {
     let mut vm = VM::default();
@@ -106,6 +99,17 @@ fn global_var_declaration() {
     assert_eq!(bool_val(&mut vm, "nobool"), None);
     assert_eq!(nil_val(&mut vm, "nonil"), None);
     assert_eq!(str_val(&mut vm, "nostr"), None);
+}
+
+#[test]
+fn mutate_global_vars_test() {
+    let mut vm = VM::default();
+    let source = "
+        var beverage = \"cafe au lait\"; 
+        var breakfast = \"beignets with \" + beverage;";
+
+    let _ = run_code(&mut vm, source);
+    assert_eq!(str_val(&mut vm, "breakfast"), Some(String::from("beignets with cafe au lait")));
 }
 
 // ################################################################################
