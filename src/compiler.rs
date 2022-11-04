@@ -7,6 +7,8 @@ use crate::value::{allocate_object, Value};
 
 const DEBUG_PRINT_CODE: bool = false;
 
+/// For a given chunk, scans each token and then parses the token's scanned. The compiler evaluates 
+/// whether grammar rules are followed, as well as correct evaluation of precedence levels. 
 pub fn compile(source: &String) -> Result<Chunk, ()> {
     let mut current_chunk = Chunk::default();
     let mut scanner = Scanner::from(source);
@@ -67,7 +69,11 @@ struct ParseRule<'function, 'source, 'chunk> {
     precedence: Precedence,
 }
 
+// ########################################################################################################
 // Functions to match each expression type
+// ########################################################################################################
+
+/// ParseRule for parethesis.
 fn grouping<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
@@ -81,6 +87,7 @@ fn grouping<'source, 'chunk>(
     );
 }
 
+/// Parse rule for print statement.
 fn printing<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
@@ -89,6 +96,7 @@ fn printing<'source, 'chunk>(
     parser.expression(scanner);
 }
 
+/// Parse rule for numbers.
 fn number<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
@@ -104,6 +112,7 @@ fn number<'source, 'chunk>(
     parser.emit_constant(Value::number_value(value));
 }
 
+/// Parse rule for strings.
 fn string<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
@@ -116,6 +125,7 @@ fn string<'source, 'chunk>(
     parser.emit_constant(string_obj);
 }
 
+/// Parse rule for binary operations.
 fn binary<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
@@ -141,6 +151,7 @@ fn binary<'source, 'chunk>(
     }
 }
 
+/// Parse rule for literals.
 fn literal<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
@@ -154,6 +165,8 @@ fn literal<'source, 'chunk>(
     }
 }
 
+
+/// Parse rule for unary Operations.
 fn unary<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
@@ -176,6 +189,7 @@ fn unary<'source, 'chunk>(
     }
 }
 
+/// Parse rule for variables.
 fn variable<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
@@ -194,6 +208,7 @@ fn variable<'source, 'chunk>(
     }
 }
 
+/// Looks at the previos and current token generates opcodes from the inputs. 
 struct Parser<'source, 'chunk> {
     current: Option<Token<'source>>,
     previous: Option<Token<'source>>,
