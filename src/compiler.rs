@@ -111,7 +111,7 @@ fn string<'source, 'chunk>(
 ) {
     let slice = parser.previous.as_ref().unwrap().slice;
     let len = slice.len();
-    let string = slice[1..len - 1].to_string();
+    let string = slice[1..len - 1]. to_string();
     let string_obj = allocate_object(string);
     parser.emit_constant(string_obj);
 }
@@ -298,8 +298,8 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
     /// expected.
     fn expression_statement(&mut self, scanner: &mut Scanner<'source>) {
         self.expression(scanner);
-        self.consume(TOKEN_SEMICOLON, "Expect ';' after expression.", scanner);
-        self.emit_byte(OpCode::OP_POP);
+        //self.consume(TOKEN_SEMICOLON, "Expect ';' after expression.", scanner);
+        //self.emit_byte(OpCode::OP_POP);
     }
 
     fn declaration(&mut self, scanner: &mut Scanner<'source>) {

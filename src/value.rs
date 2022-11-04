@@ -5,7 +5,7 @@ use crate::error::InterpretError;
 
 #[repr(C)]
 pub struct Value {
-    kind: ValueKind,
+    pub kind: ValueKind,
     u: ValueUnion,
 }
 
@@ -245,7 +245,7 @@ impl Value {
     pub fn as_string(&self) -> Result<String, InterpretError> {
         if self.is_obj() {
             let obj = self.as_obj().unwrap();
-            Ok(obj.to_string())
+            Ok(obj.to_string().as_str().trim_matches('\"').to_string())
         } else {
             Err(InterpretError::INTERPRET_RUNTIME_ERROR)
         }

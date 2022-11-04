@@ -253,6 +253,7 @@ impl VM {
         self.chunk = chunk;
         return self;
     }
+
 }
 
 fn binary_operator(vm: &mut VM, op: char) -> Result<(), InterpretError> {

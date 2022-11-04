@@ -31,7 +31,7 @@ impl Display for TableError {
 pub struct Table {
     count: usize,
     capacity: usize,
-    entries: Vec<Option<Entry>>,
+    pub entries: Vec<Option<Entry>>,
 }
 
 impl Table {
@@ -96,7 +96,11 @@ impl Table {
     /// Inserts an entity into the hash map. Resizes
     /// the table if the capacity has been reached.
     pub fn insert(&mut self, key: impl ToString, value: Value) -> Result<(), Box<TableError>> {
-        let key = key.to_string();
+        // trim the \" on the front and back
+        let test = value.as_string().unwrap();  
+        println!("inserting: {:?}", test);
+        println!("inserting: {:?}", value);
+        let key = key.to_string().as_str().trim_matches('\"').to_string();
         // Grow the capacity if the capacity has been reached.
         if (self.count + 1) as f32 > (self.capacity as f32) * TABLE_MAX_LOAD {
             let new_capacity = grow_capacity(self.capacity);
@@ -187,12 +191,12 @@ impl Table {
     }
 }
 
-struct Entry {
-    key: String,
-    value: Value,
+pub struct Entry {
+    pub key: String,
+    pub value: Value,
     hash: u64,
     /// Sentinel entry to record when an entry has been deleted.
-    is_tombstone: bool,
+    pub is_tombstone: bool,
 }
 
 impl Entry {
