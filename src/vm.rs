@@ -168,6 +168,7 @@ impl VM {
                     let _ = self.table.insert(name, value);
                     Ok(())
                 }
+                // TODO: is the GET_LOCAL the same as the GET_GLOBAL
                 OP_GET_GLOBAL(index) => {
                     let key = self.chunk.get_constant_name(&index).unwrap();
                     let table_value = self.table.get(key.as_str());
@@ -184,21 +185,36 @@ impl VM {
                     }
                 }
                 // TODO: debug, do I ever set the value
+                // TODO: is the SET_LOCAL the same as the SET_GLOBAL
                 OP_SET_GLOBAL(index) => {
                     let key = self.chunk.get_constant_name(&index).unwrap();
                     let table_value = self.table.get(key.as_str());
                     match table_value {
-                        None => {
-                            eprintln!("Undefined variable: {}", key);
-                            Err(INTERPRET_RUNTIME_ERROR)
-                        }
                         _ => {
                             let updated_value = self.peek(0).unwrap().clone();
                             self.table.delete(key.as_str());
                             let _ = self.table.insert(key, updated_value);
                             Ok(())
                         }
+                        None => {
+                            eprintln!("Undefined variable: {}", key);
+                            Err(INTERPRET_RUNTIME_ERROR)
+                        }
                     }
+                }
+                // Takes a single-byte operand for the stack slot where the local lives.
+                // Loads the value from that index then pushes it on top of the stack
+                // where later instructions can find it.
+                OP_GET_LOCAL(index) => {
+                    let local = self.chunk.constants.get(index).unwrap().clone();
+                    self.push(local);
+                    Ok(())
+                }
+                // TODO set a local value
+                OP_SET_LOCAL(index) => {
+                    let updated_value = self.peek(0).unwrap().clone();
+                    self.chunk.constants.get(index) = updated_value;
+                    Ok(())
                 }
                 OP_FALSE => {
                     self.push(Value::bool_val(false));
@@ -232,7 +248,15 @@ impl VM {
                     unimplemented!()
                 }
                 OP_PRINT => {
-                    println!("{:?}", self.pop());
+                    let pop = self.pop();
+                    match pop.kind {
+                        crate::value::ValueKind::ValBool => println!("{}", pop.as_bool().unwrap()),
+                        crate::value::ValueKind::ValNil => println!("{}", pop.as_nil().unwrap()),
+                        crate::value::ValueKind::ValNumber => {
+                            println!("{}", pop.as_number().unwrap())
+                        }
+                        crate::value::ValueKind::ValObj => println!("{}", pop.as_string().unwrap()),
+                    }
                     Ok(())
                 }
             };
@@ -253,7 +277,6 @@ impl VM {
         self.chunk = chunk;
         return self;
     }
-
 }
 
 fn binary_operator(vm: &mut VM, op: char) -> Result<(), InterpretError> {

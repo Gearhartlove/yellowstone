@@ -1,7 +1,7 @@
+use crate::error::InterpretError;
 use std::fmt::{Debug, Formatter};
 use std::mem::ManuallyDrop;
 use std::rc::Rc;
-use crate::error::InterpretError;
 
 #[repr(C)]
 pub struct Value {
@@ -28,10 +28,33 @@ pub enum ValueKind {
 impl Clone for Value {
     fn clone(&self) -> Self {
         match self.kind {
-            ValueKind::ValBool => { let b = self.as_bool().unwrap(); Value { kind: ValueKind::ValBool, u: ValueUnion { b } } }
-            ValueKind::ValNil => { Value { kind: ValueKind::ValNil, u: ValueUnion { f: 0. } } }
-            ValueKind::ValNumber => { let f = self.as_number().unwrap(); Value { kind: ValueKind::ValNumber, u: ValueUnion { f } } }
-            ValueKind::ValObj => { let o = self.as_obj().unwrap(); Value { kind: ValueKind::ValObj, u: ValueUnion { o: ManuallyDrop::new(o) } } }
+            ValueKind::ValBool => {
+                let b = self.as_bool().unwrap();
+                Value {
+                    kind: ValueKind::ValBool,
+                    u: ValueUnion { b },
+                }
+            }
+            ValueKind::ValNil => Value {
+                kind: ValueKind::ValNil,
+                u: ValueUnion { f: 0. },
+            },
+            ValueKind::ValNumber => {
+                let f = self.as_number().unwrap();
+                Value {
+                    kind: ValueKind::ValNumber,
+                    u: ValueUnion { f },
+                }
+            }
+            ValueKind::ValObj => {
+                let o = self.as_obj().unwrap();
+                Value {
+                    kind: ValueKind::ValObj,
+                    u: ValueUnion {
+                        o: ManuallyDrop::new(o),
+                    },
+                }
+            }
         }
     }
 }
@@ -41,7 +64,7 @@ impl PartialEq<str> for Value {
         let conv = self.as_string().unwrap();
         // todo: reason out the extra " " around the word
 
-        &conv .as_str()[1..conv .len()-1] == other
+        &conv.as_str()[1..conv.len() - 1] == other
     }
 }
 
@@ -57,7 +80,7 @@ impl PartialEq<f32> for Value {
         let conv = match self.kind {
             ValueKind::ValNil => self.as_nil().unwrap(),
             ValueKind::ValNumber => self.as_number().unwrap(),
-            _ => ( return false )
+            _ => (return false),
         };
         conv == *other
     }
@@ -68,7 +91,7 @@ impl PartialEq<Value> for str {
         let other = other.as_string().unwrap();
         // todo: reason out the extra " " around the word
 
-        self == &other.as_str()[1..other.len()-1]
+        self == &other.as_str()[1..other.len() - 1]
     }
 }
 
@@ -85,7 +108,6 @@ impl PartialEq<Value> for bool {
         *self == conv
     }
 }
-
 
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
@@ -106,10 +128,9 @@ impl PartialEq for Value {
             //let b = self.as_obj().unwrap();
             //a == b
             todo!("no mechanism to compare raw objects yet")
-        }
-        else {
+        } else {
             false
-        }
+        };
     }
 }
 
@@ -117,57 +138,68 @@ impl Debug for Value {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
         unsafe {
             match self {
-                Value { kind: ValueKind::ValBool, u: ValueUnion { b } } => {
-                    formatter.debug_struct("Value")
-                        .field("bool_value", b)
-                        .finish()
-                },
-                Value { kind: ValueKind::ValNil, u: ValueUnion { f } } => {
-                    formatter.debug_struct("Value")
-                        .field("nil_val", f)
-                        .finish()
-                },
-                Value { kind: ValueKind::ValNumber, u: ValueUnion { f } } => {
-                    formatter.debug_struct("Value")
-                        .field("number_value", f)
-                        .finish()
-                },
-                Value { kind: ValueKind::ValObj, u: ValueUnion { o } } => {
-                    formatter.debug_struct("Object")
-                        .field("object_value", o)
-                        .finish()
-                }
+                Value {
+                    kind: ValueKind::ValBool,
+                    u: ValueUnion { b },
+                } => formatter
+                    .debug_struct("Value")
+                    .field("bool_value", b)
+                    .finish(),
+                Value {
+                    kind: ValueKind::ValNil,
+                    u: ValueUnion { f },
+                } => formatter.debug_struct("Value").field("nil_val", f).finish(),
+                Value {
+                    kind: ValueKind::ValNumber,
+                    u: ValueUnion { f },
+                } => formatter
+                    .debug_struct("Value")
+                    .field("number_value", f)
+                    .finish(),
+                Value {
+                    kind: ValueKind::ValObj,
+                    u: ValueUnion { o },
+                } => formatter
+                    .debug_struct("Object")
+                    .field("object_value", o)
+                    .finish(),
             }
         }
     }
 }
 
-
-
 impl Value {
     pub fn values_equal(a: Value, b: Value) -> bool {
         if a.kind != b.kind {
-            return false
+            return false;
         }
         return match a.kind {
-            ValueKind::ValBool => { Value::as_bool(&a) == Value::as_bool(&b) },
-            ValueKind::ValNil => { true },
-            ValueKind::ValNumber => { Value::as_number(&a) == Value::as_number(&b) },
+            ValueKind::ValBool => Value::as_bool(&a) == Value::as_bool(&b),
+            ValueKind::ValNil => true,
+            ValueKind::ValNumber => Value::as_number(&a) == Value::as_number(&b),
             ValueKind::ValObj => {
                 let string_a = a.as_string().unwrap();
                 let string_b = b.as_string().unwrap();
 
                 string_a == string_b
             }
-        }
+        };
     }
 
     fn print_value(self) {
         match self.kind {
-            ValueKind::ValBool => { println!("{}", self.as_bool().unwrap()) },
-            ValueKind::ValNil => { println!("{}", self.as_nil().unwrap()) },
-            ValueKind::ValNumber => { println!("{}", self.as_number().unwrap()) },
-            ValueKind::ValObj => { println!("{:?}", self.as_obj()) }
+            ValueKind::ValBool => {
+                println!("{}", self.as_bool().unwrap())
+            }
+            ValueKind::ValNil => {
+                println!("{}", self.as_nil().unwrap())
+            }
+            ValueKind::ValNumber => {
+                println!("{}", self.as_number().unwrap())
+            }
+            ValueKind::ValObj => {
+                println!("{:?}", self.as_obj())
+            }
         }
     }
 
@@ -176,7 +208,7 @@ impl Value {
     pub fn bool_val(b: bool) -> Self {
         Self {
             kind: ValueKind::ValBool,
-            u: ValueUnion { b }
+            u: ValueUnion { b },
         }
     }
 
@@ -190,14 +222,16 @@ impl Value {
     pub fn number_value(num: f32) -> Self {
         Self {
             kind: ValueKind::ValNumber,
-            u: ValueUnion { f: num }
+            u: ValueUnion { f: num },
         }
     }
 
     fn obj_value(o: Rc<dyn ObjectHandler>) -> Self {
         Self {
             kind: ValueKind::ValObj,
-            u: ValueUnion { o: ManuallyDrop::new(Rc::clone(&o)) }
+            u: ValueUnion {
+                o: ManuallyDrop::new(Rc::clone(&o)),
+            },
         }
     }
 
@@ -205,9 +239,7 @@ impl Value {
     // Value -> primitive
     pub fn as_bool(&self) -> Result<bool, InterpretError> {
         if self.is_bool() {
-            unsafe {
-                Ok(self.u.b)
-            }
+            unsafe { Ok(self.u.b) }
         } else {
             Err(InterpretError::INTERPRET_RUNTIME_ERROR)
         }
@@ -215,9 +247,7 @@ impl Value {
 
     pub fn as_nil(&self) -> Result<f32, InterpretError> {
         if self.is_nil() {
-            unsafe {
-                Ok(self.u.f)
-            }
+            unsafe { Ok(self.u.f) }
         } else {
             Err(InterpretError::INTERPRET_RUNTIME_ERROR)
         }
@@ -225,9 +255,7 @@ impl Value {
 
     pub fn as_number(&self) -> Result<f32, InterpretError> {
         if self.is_number() {
-            unsafe {
-                Ok(self.u.f)
-            }
+            unsafe { Ok(self.u.f) }
         } else {
             Err(InterpretError::INTERPRET_RUNTIME_ERROR)
         }
@@ -235,9 +263,7 @@ impl Value {
 
     pub fn as_obj(&self) -> Result<Rc<dyn ObjectHandler>, InterpretError> {
         if self.is_obj() {
-            unsafe {
-                Ok(Rc::clone(&self.u.o))
-            }
+            unsafe { Ok(Rc::clone(&self.u.o)) }
         } else {
             Err(InterpretError::INTERPRET_RUNTIME_ERROR)
         }
@@ -257,7 +283,10 @@ impl Value {
     pub fn is_bool(&self) -> bool {
         unsafe {
             match self {
-                Value { kind: ValueKind::ValBool, u: ValueUnion { b: _b } } => true,
+                Value {
+                    kind: ValueKind::ValBool,
+                    u: ValueUnion { b: _b },
+                } => true,
                 _ => false,
             }
         }
@@ -265,7 +294,10 @@ impl Value {
 
     pub fn is_nil(&self) -> bool {
         match self {
-            Value { kind: ValueKind::ValNil, u: ValueUnion { f: _} } => true,
+            Value {
+                kind: ValueKind::ValNil,
+                u: ValueUnion { f: _ },
+            } => true,
             _ => false,
         }
     }
@@ -273,7 +305,10 @@ impl Value {
     pub fn is_number(&self) -> bool {
         unsafe {
             match self {
-                Value { kind: ValueKind::ValNumber, u: ValueUnion { f: _f } } => true,
+                Value {
+                    kind: ValueKind::ValNumber,
+                    u: ValueUnion { f: _f },
+                } => true,
                 _ => false,
             }
         }
@@ -282,14 +317,17 @@ impl Value {
     pub fn is_obj(&self) -> bool {
         unsafe {
             match self {
-                Value { kind: ValueKind::ValObj, u: ValueUnion { o: _o } } => true,
+                Value {
+                    kind: ValueKind::ValObj,
+                    u: ValueUnion { o: _o },
+                } => true,
                 _ => false,
             }
         }
     }
 
     pub fn is_string(value: &Value) -> bool {
-        Value::is_obj_kind(value,ObjKind::OBJ_STRING)
+        Value::is_obj_kind(value, ObjKind::OBJ_STRING)
     }
 
     fn is_obj_kind(value: &Value, obj_kind: ObjKind) -> bool {
@@ -304,12 +342,13 @@ impl Value {
 // > uses trait inheritance : a constraint on implementors of MyTrait: "If you implement MyTrait, you have to implement Debug too"
 // todo: research if a static lifetime is right here
 pub fn allocate_object<T>(data: T) -> Value
-    where T: ObjectHandler + 'static
+where
+    T: ObjectHandler + 'static,
 {
     let rc = Rc::new(data);
     let obj = Value::obj_value(rc);
 
-    return obj
+    return obj;
 }
 
 pub trait ObjectHandler: std::fmt::Debug {
@@ -318,7 +357,6 @@ pub trait ObjectHandler: std::fmt::Debug {
     fn to_string(self: Rc<Self>) -> String {
         format!("{:?}", self)
     }
-
 }
 
 // ##############################################################

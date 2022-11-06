@@ -55,6 +55,13 @@ fn global_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
     }
 }
 
+/// The slot number of the local variable. b/c the local variable's name never leaves the
+/// compiler to make it into the chunk at all.
+fn local_instruction(name: &'static str, offset: &mut u32, chunk: &Chunk) -> u32 {
+    println!("{} {}", name, offset); // TODO: is this the right thing to print?
+    return offset + 1;
+}
+
 fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &String, chunk: &Chunk) {
     print!("{:04}", offset);
     let line = get_line(offset, &lines);
@@ -69,6 +76,8 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
         OP_DEFINE_GLOBAL(_) => global_instruction(instruction, offset, chunk),
         OP_GET_GLOBAL(_) => global_instruction(instruction, offset, chunk),
         OP_SET_GLOBAL(_) => global_instruction(instruction, offset, chunk),
+        OP_SET_LOCAL(_) => local_instruction("OP_SET_LOCAL", offset, chunk),
+        OP_GET_LOCAL(_) => local_instruction("OP_GET_LOCAL", offset, chunk),
         OP_TRUE => simple_instruction("OP_TRUE", offset),
         OP_NIL => simple_instruction("OP_NIL", offset),
         OP_FALSE => simple_instruction("OP_FALSE", offset),

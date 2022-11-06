@@ -7,15 +7,16 @@ use crate::value::{allocate_object, Value};
 
 const DEBUG_PRINT_CODE: bool = false;
 
-/// For a given chunk, scans each token and then parses the token's scanned. The compiler evaluates 
-/// whether grammar rules are followed, as well as correct evaluation of precedence levels. 
+/// For a given chunk, scans each token and then parses the token's scanned. The compiler evaluates
+/// whether grammar rules are followed, as well as correct evaluation of precedence levels.
 pub fn compile(source: &String) -> Result<Chunk, ()> {
     let mut current_chunk = Chunk::default();
     let mut scanner = Scanner::from(source);
     let mut parser = Parser::new(&mut current_chunk);
+    let mut current = Compiler::default();
     parser.advance(&mut scanner); // Q; 'primes the pump' > ? do I need
     while !parser.match_token(TOKEN_EOF, &mut scanner) {
-        parser.declaration(&mut scanner);
+        parser.declaration(&mut scanner, &mut current);
     }
     parser.end_compiler();
     return match parser.had_error {
@@ -64,9 +65,100 @@ enum ErrorAt {
 }
 
 struct ParseRule<'function, 'source, 'chunk> {
-    prefix: Option<&'function dyn Fn(&mut Parser<'source, 'chunk>, &mut Scanner<'source>, bool)>,
-    infix: Option<&'function dyn Fn(&mut Parser<'source, 'chunk>, &mut Scanner<'source>, bool)>,
+    prefix: Option<
+        &'function dyn Fn(
+            &mut Parser<'source, 'chunk>,
+            &mut Scanner<'source>,
+            &mut Compiler<'source>,
+            bool,
+        ),
+    >,
+    infix: Option<
+        &'function dyn Fn(
+            &mut Parser<'source, 'chunk>,
+            &mut Scanner<'source>,
+            &mut Compiler<'source>,
+            bool,
+        ),
+    >,
     precedence: Precedence,
+}
+
+struct Local<'source> {
+    pub name: &'source Token<'source>,
+    pub depth: usize,
+    pub initialized: bool,
+}
+
+impl<'source> Local<'source> {
+    pub fn new(name: &'source Token<'source>, depth: usize) -> Self {
+        Local {
+            name,
+            depth,
+            initialized: false,
+        }
+    }
+}
+
+#[derive(Default)]
+struct Compiler<'source> {
+    locals: Vec<Local<'source>>,
+    scope_depth: usize,
+}
+
+impl<'source> Compiler<'source> {
+    const MAX_LOCALS: usize = 256;
+
+    fn begin_scope(&mut self) {
+        self.scope_depth += 1;
+    }
+
+    // TODO: implement end_scope
+    fn end_scope(&mut self, parser: &mut Parser) {
+        self.scope_depth -= 1;
+
+        if self.locals.len() > 1 {
+            for i in (self.locals.len() - 1)..0 {
+                let consider_depth = self.locals.get(i as usize).unwrap().depth;
+                // remove the local from the locals register if it's scope is greater than
+                // the current scope
+                if consider_depth > self.scope_depth {
+                    parser.emit_byte(OpCode::OP_POP);
+                    self.locals.remove(i);
+                }
+            }
+        }
+    }
+
+    fn add_local(&mut self, name: &'source Token<'source>) {
+        if self.locals.len() < Compiler::MAX_LOCALS {
+            let depth = self.scope_depth;
+            let local = Local::new(name, depth);
+            self.locals.push(local);
+        } else {
+            eprint!("Too many local variables in a function.");
+        }
+    }
+
+    /// Walk the list of locals that are currently in scope. If one has the same name as the
+    /// identifier token, the identifier must refer to that variable.
+    fn resolve_local(&mut self, name: &'source Token<'source>) -> usize {
+        for (i, local) in self.locals.iter().rev().enumerate() {
+            if local.name.slice == name.slice {
+                // ensure variable is initialized
+                if !local.initialized {
+                    panic!("Can't read local variable in its own initializer.")
+                }
+                return i;
+            }
+        }
+
+        return 0; // TODO: ensure that the first varaible allocated is not in index 0
+    }
+
+    fn initialize_new_variable(&mut self) {
+        self.locals.last().unwrap().initialized = true
+    }
 }
 
 // ########################################################################################################
@@ -77,9 +169,10 @@ struct ParseRule<'function, 'source, 'chunk> {
 fn grouping<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
+    current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
-    parser.expression(scanner);
+    parser.expression(scanner, current);
     parser.consume(
         TokenKind::TOKEN_RIGHT_PAREN,
         "Expect ')' after expression.",
@@ -91,15 +184,17 @@ fn grouping<'source, 'chunk>(
 fn printing<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
+    current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
-    parser.expression(scanner);
+    parser.expression(scanner, current);
 }
 
 /// Parse rule for numbers.
 fn number<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
+    _current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
     let value = parser
@@ -116,11 +211,12 @@ fn number<'source, 'chunk>(
 fn string<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
+    _current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
     let slice = parser.previous.as_ref().unwrap().slice;
     let len = slice.len();
-    let string = slice[1..len - 1]. to_string();
+    let string = slice[1..len - 1].to_string();
     let string_obj = allocate_object(string);
     parser.emit_constant(string_obj);
 }
@@ -129,12 +225,13 @@ fn string<'source, 'chunk>(
 fn binary<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
+    current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
     let operator_type = parser.previous.as_ref().unwrap().kind.clone();
     let rule = get_rule(operator_type);
     let prec = rule.precedence as usize;
-    parser.parse_precedence(Precedence::get_enum(prec), scanner);
+    parser.parse_precedence(Precedence::get_enum(prec), scanner, current);
 
     match operator_type {
         TokenKind::TOKEN_BANG_EQUAL => parser.emit_bytes(OpCode::OP_EQUAL, OpCode::OP_NOT),
@@ -155,6 +252,7 @@ fn binary<'source, 'chunk>(
 fn literal<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
+    _current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
     match parser.previous.as_ref().unwrap().kind {
@@ -165,17 +263,17 @@ fn literal<'source, 'chunk>(
     }
 }
 
-
 /// Parse rule for unary Operations.
 fn unary<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
+    current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
     let operator_type = parser.previous.as_ref().unwrap().kind.clone();
 
     // Compile the operand
-    parser.parse_precedence(Precedence::PREC_UNARY, scanner);
+    parser.parse_precedence(Precedence::PREC_UNARY, scanner, current);
 
     // Emit the operator instruction
     match operator_type {
@@ -193,22 +291,33 @@ fn unary<'source, 'chunk>(
 fn variable<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
+    current: &mut Compiler, // TODO: update every rule to add the compiler to it
     can_assign: bool,
 ) {
-    let index = parser.identifier_constant_prev();
+    let (get_op, set_op) = {
+        let name = parser.previous.as_ref().unwrap();
 
+        let idx = current.resolve_local(name); // TODO: how to get name?
+        if idx != 0 {
+            (OpCode::OP_GET_LOCAL(idx), OpCode::OP_SET_LOCAL(idx))
+        } else {
+            (OpCode::OP_GET_GLOBAL(idx), OpCode::OP_SET_GLOBAL(idx))
+        }
+    };
+
+    let index = parser.identifier_constant_prev();
     // Set variable
     if can_assign && parser.match_token(TOKEN_EQUAL, scanner) {
-        parser.expression(scanner);
-        parser.emit_byte(OpCode::OP_SET_GLOBAL(index));
+        parser.expression(scanner, current);
+        parser.emit_byte(set_op);
     }
     // Get variable
     else {
-        parser.emit_byte(OpCode::OP_GET_GLOBAL(index));
+        parser.emit_byte(get_op);
     }
 }
 
-/// Looks at the previos and current token generates opcodes from the inputs. 
+/// Looks at the previos and current token generates opcodes from the inputs.
 struct Parser<'source, 'chunk> {
     current: Option<Token<'source>>,
     previous: Option<Token<'source>>,
@@ -302,29 +411,45 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         true
     }
 
-    fn expression(&mut self, scanner: &mut Scanner<'source>) {
-        self.parse_precedence(Precedence::PREC_ASSIGNMENT, scanner);
+    fn expression(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler) {
+        self.parse_precedence(Precedence::PREC_ASSIGNMENT, scanner, current);
     }
 
-    fn print_statement(&mut self, scanner: &mut Scanner<'source>) {
-        self.expression(scanner);
+    fn block(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
+        loop {
+            if !self.check(TOKEN_RIGHT_BRACE) && !self.check(TOKEN_EOF) {
+                self.declaration(scanner, current);
+            } else {
+                break;
+            }
+        }
+
+        self.consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.", scanner);
+    }
+
+    fn print_statement(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
+        self.expression(scanner, current);
         self.consume(TOKEN_SEMICOLON, "Expect ';' after value.", scanner);
         self.emit_byte(OP_PRINT);
     }
 
     /// An expression followed by a semicolon. How you write an expression in a context where a statement is
     /// expected.
-    fn expression_statement(&mut self, scanner: &mut Scanner<'source>) {
-        self.expression(scanner);
+    fn expression_statement(
+        &mut self,
+        scanner: &mut Scanner<'source>,
+        current: &mut Compiler<'source>,
+    ) {
+        self.expression(scanner, current);
         //self.consume(TOKEN_SEMICOLON, "Expect ';' after expression.", scanner);
         //self.emit_byte(OpCode::OP_POP);
     }
 
-    fn declaration(&mut self, scanner: &mut Scanner<'source>) {
+    fn declaration(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
         if self.match_token(TOKEN_VAR, scanner) {
-            self.var_declaraiton(scanner);
+            self.var_declaration(scanner, current);
         } else {
-            self.statement(scanner);
+            self.statement(scanner, current);
         }
 
         if self.panic_mode {
@@ -332,11 +457,11 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         }
     }
 
-    fn var_declaraiton(&mut self, scanner: &mut Scanner<'source>) {
-        let global: usize = self.parse_variable("Expect variable name.", scanner);
+    fn var_declaration(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
+        let global: usize = self.parse_variable("Expect variable name.", scanner, current);
 
         if self.match_token(TOKEN_EQUAL, scanner) {
-            self.expression(scanner);
+            self.expression(scanner, current);
         } else {
             self.emit_byte(OpCode::OP_NIL)
         }
@@ -346,7 +471,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
             scanner,
         );
 
-        self.define_variable(global);
+        self.define_variable(global, current);
     }
 
     /// Continue to advance the scanner until a strong token is recognized.
@@ -390,25 +515,35 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         }
     }
 
-    fn statement(&mut self, scanner: &mut Scanner<'source>) {
+    fn statement(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
         if let Some(t) = &self.current {
             match t.kind {
                 TOKEN_PRINT => {
-                    self.print_statement(scanner);
+                    self.print_statement(scanner, current);
                 }
-                _ => self.expression_statement(scanner),
+                TOKEN_LEFT_BRACE => {
+                    current.begin_scope();
+                    self.block(scanner, current);
+                    current.end_scope(self);
+                }
+                _ => self.expression_statement(scanner, current),
             }
         }
     }
 
-    fn parse_precedence(&mut self, precedence: Precedence, scanner: &mut Scanner<'source>) {
+    fn parse_precedence(
+        &mut self,
+        precedence: Precedence,
+        scanner: &mut Scanner<'source>,
+        current: &mut Compiler<'source>,
+    ) {
         self.advance(scanner);
         let prev_kind = self.previous.as_ref().unwrap().kind.clone();
 
         let prefix_rule = get_rule(prev_kind).prefix;
         if let Some(rule) = prefix_rule {
             let can_assign: bool = precedence <= Precedence::PREC_ASSIGNMENT;
-            rule(self, scanner, can_assign);
+            rule(self, scanner, current, can_assign);
 
             while precedence <= get_rule(self.current.as_ref().unwrap().kind.clone()).precedence {
                 self.advance(scanner);
@@ -416,7 +551,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                 let prev = self.previous.as_ref().unwrap().kind.clone();
                 let infix_rule = get_rule(prev).infix;
                 if let Some(rule) = infix_rule {
-                    rule(self, scanner, can_assign);
+                    rule(self, scanner, current, can_assign);
                 }
 
                 if can_assign && self.match_token(TOKEN_EQUAL, scanner) {
@@ -430,7 +565,12 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
     }
 
     /// Outputs the bytecode instruction that defines the new variable and stores its initial value.
-    fn define_variable(&mut self, global_index: usize) {
+    fn define_variable(&mut self, global_index: usize, current: &mut Compiler) {
+        if current.scope_depth > 0 {
+            current.initialize_new_variable();
+            return;
+        }
+
         self.emit_byte(OpCode::OP_DEFINE_GLOBAL(global_index));
     }
 
@@ -438,8 +578,15 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         &mut self,
         error_message: &'static str,
         scanner: &mut Scanner<'source>,
+        current: &mut Compiler<'source>,
     ) -> usize {
         self.consume(TOKEN_IDENTIFIER, error_message, scanner);
+
+        self.declare_variable(current);
+        if current.scope_depth > 0 {
+            return 0;
+        }
+
         let index = self.identifier_constant_prev();
         return index;
     }
@@ -455,6 +602,34 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         let value = allocate_object(token.slice.to_string());
         let index = self.compiling_chunk.add_constant(value);
         return index;
+    }
+
+    pub fn declare_variable(self, current: &mut Compiler) {
+        if current.scope_depth == 0 {
+            return;
+        }
+
+        let name = self.previous.as_ref().unwrap();
+
+        let mut to_remove: Option<usize> = None;
+        for (i, local) in current.locals.iter().rev().enumerate() {
+            if local.depth != 0 && local.depth < current.scope_depth {
+                break;
+            }
+
+            // remove the local that is overshaddowed (it will never be refenced again),
+            // and add the new one at the end of the scope
+            if name.slice == local.name.slice {
+                to_remove = Some(i);
+                break;
+            }
+        }
+
+        if let Some(rmv) = to_remove {
+            current.locals.remove(rmv);
+        }
+
+        current.add_local(name);
     }
 
     fn end_compiler(&mut self) {

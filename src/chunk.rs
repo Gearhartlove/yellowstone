@@ -21,6 +21,8 @@ pub enum OpCode {
     OP_DIVIDE,
     OP_PRINT,
     OP_POP,
+    OP_GET_LOCAL(usize),
+    OP_SET_LOCAL(usize),
     OP_DEFINE_GLOBAL(usize),
     OP_GET_GLOBAL(usize),
     OP_SET_GLOBAL(usize),
