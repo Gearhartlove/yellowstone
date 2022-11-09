@@ -361,3 +361,19 @@ fn tokenize_identifier_test() {
     assert_eq!("while", token.slice);
     assert_eq!(TokenKind::TOKEN_WHILE, token.kind);
 }
+
+#[test]
+fn tokenizer_block_test() {
+    let source = String:: from("{}");
+    assert_tokens_are!(source, TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE, TOKEN_EOF);
+
+
+    let source = String:: from("{ var a = \"apple\"; }");
+    assert_tokens_are!(source, TOKEN_LEFT_BRACE, TOKEN_VAR, TOKEN_IDENTIFIER,
+        TOKEN_EQUAL, TOKEN_STRING, TOKEN_SEMICOLON,TOKEN_RIGHT_BRACE, TOKEN_EOF);
+
+
+    let source = String:: from("print \"hello\"; { \"world\" }");
+    assert_tokens_are!(source, TOKEN_PRINT, TOKEN_STRING, TOKEN_SEMICOLON,
+        TOKEN_LEFT_BRACE, TOKEN_STRING,TOKEN_RIGHT_BRACE, TOKEN_EOF);
+}

@@ -66,6 +66,7 @@ impl VM {
         self.stack.get(self.stack.len() - from_top - 1)
     }
 
+
     // Pushes the newly created object to the objects linked list. Ensures the Value is of type object.
     fn track_object(&mut self, val: &Value) {
         if !val.is_obj() {
@@ -184,21 +185,19 @@ impl VM {
                         }
                     }
                 }
-                // TODO: debug, do I ever set the value
-                // TODO: is the SET_LOCAL the same as the SET_GLOBAL
                 OP_SET_GLOBAL(index) => {
                     let key = self.chunk.get_constant_name(&index).unwrap();
                     let table_value = self.table.get(key.as_str());
                     match table_value {
+                        None => {
+                            eprintln!("Undefined variable: {}", key);
+                            Err(INTERPRET_RUNTIME_ERROR)
+                        }
                         _ => {
                             let updated_value = self.peek(0).unwrap().clone();
                             self.table.delete(key.as_str());
                             let _ = self.table.insert(key, updated_value);
                             Ok(())
-                        }
-                        None => {
-                            eprintln!("Undefined variable: {}", key);
-                            Err(INTERPRET_RUNTIME_ERROR)
                         }
                     }
                 }
@@ -213,7 +212,7 @@ impl VM {
                 // TODO set a local value
                 OP_SET_LOCAL(index) => {
                     let updated_value = self.peek(0).unwrap().clone();
-                    self.chunk.constants.get(index) = updated_value;
+                    *self.chunk.constants.get_mut(index).unwrap() = updated_value;
                     Ok(())
                 }
                 OP_FALSE => {

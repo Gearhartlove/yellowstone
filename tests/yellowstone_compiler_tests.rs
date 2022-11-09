@@ -1,6 +1,7 @@
 extern crate core;
 
 use std::fmt::{Debug, Display};
+use yellowstone::error::InterpretError;
 use yellowstone::value::{allocate_object, Value, ValueKind, ValueUnion};
 use yellowstone::vm::VM;
 
@@ -80,6 +81,13 @@ fn compiler_precedence() {
 }
 
 #[test]
+fn global_var_test() {
+    let mut vm = VM::default();
+    let source = "var lang = \"yellowstone\";";
+    run_code(&mut vm, source);
+}
+
+#[test]
 fn global_var_declaration() {
     let mut vm = VM::default();
     let source = "
@@ -111,6 +119,75 @@ fn mutate_global_vars_test() {
     let _ = run_code(&mut vm, source);
     assert_eq!(str_val(&mut vm, "breakfast"), Some(String::from("beignets with cafe au lait")));
 }
+
+#[test]
+fn local_var_declaration_test() {
+    let mut vm = VM::default();
+        let source = "
+            {
+                var lang = \"yellowstone\";
+            }
+        ";
+
+        // NOTE: this test will never fail, change run_code to return a result and match
+        // on that result. Look into the anyhow crate for this :)
+        let _ = run_code(&mut vm, source);
+}
+
+
+/* 
+// Develment Note: for whatever reason when I define a global variable, two of them are pushed 
+// onto the constant stack. also I am not able to define multiple local variables in one scope.
+// Need to: 1) get multiple local vars working 2) understand global vars and local vars being constants.
+*/
+#[test]
+fn get_var_declaration_test() {
+    let mut vm = VM::default();
+        let source = "
+            {
+                var test = \"test\";
+                var lang = \"yellowstone\";
+                print lang;
+            }
+        ";
+
+        // NOTE: this test will never fail, change run_code to return a result and match
+        // on that result. Look into the anyhow crate for this :)
+        let _ = run_code(&mut vm, source);
+}
+
+#[test]
+fn global_local_interaction_test() {
+    let mut vm = VM::default();
+        let source = "
+            var foo = \"foo\";
+            {
+                var lang = \"yellowstone\";
+                foo = foo + lang;
+            }
+            foo
+        ";
+
+        let _ = run_code(&mut vm, source);
+
+        assert_eq!(str_val(&mut vm, "foo"), Some(String::from("fooyellowstone")));
+}
+
+// #[test]
+// fn undefined_local_error_test() {
+//     let mut vm = VM::default();
+//         let source = "
+//             {
+//                 var lang = \"yellowstone\";
+//             }
+//             lang
+//         ";
+
+//         // NOTE: this test will never fail, change run_code to return a result and match
+//         // on that result. Look into the anyhow crate for this :)
+//         let result = run_code(&mut vm, source);
+//         assert_eq!(result, InterpretError::INTERPRET_RUNTIME_UNRECOGNIZED_VARIABLE_ERROR);
+// }
 
 // ################################################################################
 // Helper Functions

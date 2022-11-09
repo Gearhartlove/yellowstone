@@ -13,16 +13,16 @@ pub fn compile(source: &String) -> Result<Chunk, ()> {
     let mut current_chunk = Chunk::default();
     let mut scanner = Scanner::from(source);
     let mut parser = Parser::new(&mut current_chunk);
-    let mut current = Compiler::default();
+    let mut current = Compiler::new();
     parser.advance(&mut scanner); // Q; 'primes the pump' > ? do I need
     while !parser.match_token(TOKEN_EOF, &mut scanner) {
         parser.declaration(&mut scanner, &mut current);
     }
     parser.end_compiler();
-    return match parser.had_error {
+    match parser.had_error {
         true => Err(()),
         false => Ok(current_chunk),
-    };
+    }
 }
 
 #[allow(non_camel_case_types)]
@@ -43,7 +43,7 @@ enum Precedence {
 
 impl Precedence {
     fn get_enum(prec: usize) -> Self {
-        return match prec {
+        match prec {
             0 => Precedence::PREC_NONE,
             1 => Precedence::PREC_ASSIGNMENT,
             2 => Precedence::PREC_OR,
@@ -55,7 +55,7 @@ impl Precedence {
             8 => Precedence::PREC_UNARY,
             9 => Precedence::PREC_CALL,
             _ => Precedence::PREC_PRIMARY,
-        };
+        }
     }
 }
 
@@ -85,29 +85,45 @@ struct ParseRule<'function, 'source, 'chunk> {
 }
 
 struct Local<'source> {
-    pub name: &'source Token<'source>,
+    pub name: &'source str,
     pub depth: usize,
     pub initialized: bool,
 }
 
 impl<'source> Local<'source> {
-    pub fn new(name: &'source Token<'source>, depth: usize) -> Self {
+    pub fn new(name: &'source str, depth: usize) -> Self {
         Local {
             name,
             depth,
             initialized: false,
         }
     }
+
+    pub fn initialize(&mut self) {
+        assert!(!self.initialized);
+
+        self.initialized = true;
+    }
 }
 
-#[derive(Default)]
 struct Compiler<'source> {
-    locals: Vec<Local<'source>>,
+    locals: Vec<Option<Local<'source>>>,
     scope_depth: usize,
 }
 
 impl<'source> Compiler<'source> {
     const MAX_LOCALS: usize = 256;
+
+    /// Instantiate a new compiler for local variables. Push a None onto the array b/c
+    /// that slot will be used to determine if their are no local variables in scope.
+    fn new() -> Self {
+        let mut v: Vec<Option<Local<'source>>> = vec!(None);
+
+        Compiler {
+            locals: v,
+            scope_depth: 0,
+        }
+    }
 
     fn begin_scope(&mut self) {
         self.scope_depth += 1;
@@ -119,7 +135,8 @@ impl<'source> Compiler<'source> {
 
         if self.locals.len() > 1 {
             for i in (self.locals.len() - 1)..0 {
-                let consider_depth = self.locals.get(i as usize).unwrap().depth;
+                let consider_depth = self.locals.get(i as usize).unwrap().as_ref().unwrap().depth;
+
                 // remove the local from the locals register if it's scope is greater than
                 // the current scope
                 if consider_depth > self.scope_depth {
@@ -130,11 +147,11 @@ impl<'source> Compiler<'source> {
         }
     }
 
-    fn add_local(&mut self, name: &'source Token<'source>) {
+    fn add_local(&mut self, name: &'source str) {
         if self.locals.len() < Compiler::MAX_LOCALS {
             let depth = self.scope_depth;
             let local = Local::new(name, depth);
-            self.locals.push(local);
+            self.locals.push(Some(local));
         } else {
             eprint!("Too many local variables in a function.");
         }
@@ -142,22 +159,21 @@ impl<'source> Compiler<'source> {
 
     /// Walk the list of locals that are currently in scope. If one has the same name as the
     /// identifier token, the identifier must refer to that variable.
-    fn resolve_local(&mut self, name: &'source Token<'source>) -> usize {
+    fn resolve_local(&mut self, name: &'source str) -> usize {
         for (i, local) in self.locals.iter().rev().enumerate() {
-            if local.name.slice == name.slice {
-                // ensure variable is initialized
-                if !local.initialized {
-                    panic!("Can't read local variable in its own initializer.")
-                }
-                return i;
+            if let Some(l) = local {
+                if name == l.name && l.initialized {
+                    return (self.locals.len() - i) as usize
+                } 
             }
         }
 
-        return 0; // TODO: ensure that the first varaible allocated is not in index 0
+        0
     }
 
     fn initialize_new_variable(&mut self) {
-        self.locals.last().unwrap().initialized = true
+        let last = self.locals.last_mut().unwrap().as_mut().unwrap();   
+        last.initialize();
     }
 }
 
@@ -166,7 +182,7 @@ impl<'source> Compiler<'source> {
 // ########################################################################################################
 
 /// ParseRule for parethesis.
-fn grouping<'source, 'chunk>(
+fn grouping<'source, 'chunk, 'compiler>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
     current: &mut Compiler<'source>,
@@ -181,7 +197,7 @@ fn grouping<'source, 'chunk>(
 }
 
 /// Parse rule for print statement.
-fn printing<'source, 'chunk>(
+fn printing<'source, 'chunk, 'compiler>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
     current: &mut Compiler<'source>,
@@ -191,7 +207,7 @@ fn printing<'source, 'chunk>(
 }
 
 /// Parse rule for numbers.
-fn number<'source, 'chunk>(
+fn number<'source, 'chunk, 'compiler>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
     _current: &mut Compiler<'source>,
@@ -208,7 +224,7 @@ fn number<'source, 'chunk>(
 }
 
 /// Parse rule for strings.
-fn string<'source, 'chunk>(
+fn string<'source, 'chunk, 'compiler>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
     _current: &mut Compiler<'source>,
@@ -222,7 +238,7 @@ fn string<'source, 'chunk>(
 }
 
 /// Parse rule for binary operations.
-fn binary<'source, 'chunk>(
+fn binary<'source, 'chunk, 'compiler>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
     current: &mut Compiler<'source>,
@@ -249,9 +265,9 @@ fn binary<'source, 'chunk>(
 }
 
 /// Parse rule for literals.
-fn literal<'source, 'chunk>(
+fn literal<'source, 'chunk, 'compiler>(
     parser: &mut Parser<'source, 'chunk>,
-    scanner: &mut Scanner<'source>,
+    _scanner: &mut Scanner<'source>,
     _current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
@@ -264,13 +280,13 @@ fn literal<'source, 'chunk>(
 }
 
 /// Parse rule for unary Operations.
-fn unary<'source, 'chunk>(
+fn unary<'source, 'chunk, 'compiler>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
     current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
-    let operator_type = parser.previous.as_ref().unwrap().kind.clone();
+    let operator_type = parser.previous.as_ref().unwrap().kind;
 
     // Compile the operand
     parser.parse_precedence(Precedence::PREC_UNARY, scanner, current);
@@ -291,13 +307,14 @@ fn unary<'source, 'chunk>(
 fn variable<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
-    current: &mut Compiler, // TODO: update every rule to add the compiler to it
+    current: &mut Compiler<'source>, // TODO: update every rule to add the compiler to it
     can_assign: bool,
 ) {
     let (get_op, set_op) = {
-        let name = parser.previous.as_ref().unwrap();
+        let prev = parser.previous.as_ref().unwrap();
+        let prev_word = <&str>::clone(&prev.slice);
 
-        let idx = current.resolve_local(name); // TODO: how to get name?
+        let idx = current.resolve_local(prev_word); // TODO: how to get name?
         if idx != 0 {
             (OpCode::OP_GET_LOCAL(idx), OpCode::OP_SET_LOCAL(idx))
         } else {
@@ -305,7 +322,9 @@ fn variable<'source, 'chunk>(
         }
     };
 
-    let index = parser.identifier_constant_prev();
+    // TODO: do I need this? 
+    // let index = parser.identifier_constant_prev();
+
     // Set variable
     if can_assign && parser.match_token(TOKEN_EQUAL, scanner) {
         parser.expression(scanner, current);
@@ -411,7 +430,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         true
     }
 
-    fn expression(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler) {
+    fn expression(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
         self.parse_precedence(Precedence::PREC_ASSIGNMENT, scanner, current);
     }
 
@@ -452,13 +471,14 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
             self.statement(scanner, current);
         }
 
+        // TODO: test synchoronize
         if self.panic_mode {
             self.synchronize(scanner);
         }
     }
 
     fn var_declaration(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
-        let global: usize = self.parse_variable("Expect variable name.", scanner, current);
+        let chunk_val_index: usize = self.parse_variable("Expect variable name.", scanner, current);
 
         if self.match_token(TOKEN_EQUAL, scanner) {
             self.expression(scanner, current);
@@ -471,7 +491,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
             scanner,
         );
 
-        self.define_variable(global, current);
+        self.define_variable(chunk_val_index, current);
     }
 
     /// Continue to advance the scanner until a strong token is recognized.
@@ -522,6 +542,8 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                     self.print_statement(scanner, current);
                 }
                 TOKEN_LEFT_BRACE => {
+                    self.advance(scanner);
+
                     current.begin_scope();
                     self.block(scanner, current);
                     current.end_scope(self);
@@ -538,17 +560,17 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         current: &mut Compiler<'source>,
     ) {
         self.advance(scanner);
-        let prev_kind = self.previous.as_ref().unwrap().kind.clone();
+        let prev_kind = self.previous.as_ref().unwrap().kind;
 
         let prefix_rule = get_rule(prev_kind).prefix;
         if let Some(rule) = prefix_rule {
             let can_assign: bool = precedence <= Precedence::PREC_ASSIGNMENT;
             rule(self, scanner, current, can_assign);
 
-            while precedence <= get_rule(self.current.as_ref().unwrap().kind.clone()).precedence {
+            while precedence <= get_rule(self.current.as_ref().unwrap().kind).precedence {
                 self.advance(scanner);
 
-                let prev = self.previous.as_ref().unwrap().kind.clone();
+                let prev = self.previous.as_ref().unwrap().kind;
                 let infix_rule = get_rule(prev).infix;
                 if let Some(rule) = infix_rule {
                     rule(self, scanner, current, can_assign);
@@ -560,18 +582,17 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
             }
         } else {
             eprint!("Expect expression.");
-            return;
         }
     }
 
     /// Outputs the bytecode instruction that defines the new variable and stores its initial value.
-    fn define_variable(&mut self, global_index: usize, current: &mut Compiler) {
+    fn define_variable(&mut self, index: usize, current: &mut Compiler) {
         if current.scope_depth > 0 {
             current.initialize_new_variable();
             return;
         }
 
-        self.emit_byte(OpCode::OP_DEFINE_GLOBAL(global_index));
+        self.emit_byte(OpCode::OP_DEFINE_GLOBAL(index));
     }
 
     fn parse_variable(
@@ -591,12 +612,6 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         return index;
     }
 
-    /// From a given token, allocate a new object. Add a constant to the current compiling chunk.
-    //fn identifier_constant(&mut self, token: &Token) -> usize {
-    //    let value = allocate_object(token.slice.to_string());
-    //    self.compiling_chunk.add_constant(value)
-    //}
-
     fn identifier_constant_prev(&mut self) -> usize {
         let token = self.previous.as_ref().unwrap();
         let value = allocate_object(token.slice.to_string());
@@ -604,22 +619,24 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         return index;
     }
 
-    pub fn declare_variable(self, current: &mut Compiler) {
+    pub fn declare_variable(&self, current: &mut Compiler<'source>) {
         if current.scope_depth == 0 {
             return;
         }
 
-        let name = self.previous.as_ref().unwrap();
+        let prev = self.previous.as_ref().unwrap();
+        let prev_name = <&str>::clone(&prev.slice);
 
         let mut to_remove: Option<usize> = None;
-        for (i, local) in current.locals.iter().rev().enumerate() {
+        for (i, local) in current.locals.iter().rev().enumerate().skip(1) {
+            let local = local.as_ref().unwrap();
             if local.depth != 0 && local.depth < current.scope_depth {
                 break;
             }
 
             // remove the local that is overshaddowed (it will never be refenced again),
             // and add the new one at the end of the scope
-            if name.slice == local.name.slice {
+            if prev_name == local.name {
                 to_remove = Some(i);
                 break;
             }
@@ -629,14 +646,12 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
             current.locals.remove(rmv);
         }
 
-        current.add_local(name);
+        current.add_local(prev_name);
     }
 
     fn end_compiler(&mut self) {
-        if DEBUG_PRINT_CODE {
-            if self.had_error {
-                disassemble_chunk(&self.compiling_chunk, "code");
-            }
+        if DEBUG_PRINT_CODE && self.had_error {
+            disassemble_chunk(&self.compiling_chunk, "code");
         }
         self.emit_return() // todo: should this be commented?
     }
@@ -670,7 +685,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
 // NOTE: not calling the function here, instead
 // returning the reference to the function to be called
 // in some other scope
-fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function, 'source, 'chunk> {
+fn get_rule<'function, 'source, 'chunk, 'compiler>(kind: TokenKind) -> ParseRule<'function, 'source, 'chunk> {
     match kind {
         TOKEN_LEFT_PAREN => ParseRule {
             prefix: Some(&grouping),
