@@ -117,7 +117,7 @@ impl<'source> Compiler<'source> {
     /// Instantiate a new compiler for local variables. Push a None onto the array b/c
     /// that slot will be used to determine if their are no local variables in scope.
     fn new() -> Self {
-        let mut v: Vec<Option<Local<'source>>> = vec!(None);
+        let v: Vec<Option<Local<'source>>> = vec!(None);
 
         Compiler {
             locals: v,
@@ -129,7 +129,8 @@ impl<'source> Compiler<'source> {
         self.scope_depth += 1;
     }
 
-    // TODO: implement end_scope
+    /// Decrement the current scope by one. For every variable in the current scope, remove them from the list of locals
+    /// and emit an OP_POP OpCode to ???. TODO: understand the OP_POP here.
     fn end_scope(&mut self, parser: &mut Parser) {
         self.scope_depth -= 1;
 
@@ -137,8 +138,8 @@ impl<'source> Compiler<'source> {
             for i in (self.locals.len() - 1)..0 {
                 let consider_depth = self.locals.get(i as usize).unwrap().as_ref().unwrap().depth;
 
-                // remove the local from the locals register if it's scope is greater than
-                // the current scope
+                // Remove the local from the locals register if it's scope is greater than
+                // the current scope.
                 if consider_depth > self.scope_depth {
                     parser.emit_byte(OpCode::OP_POP);
                     self.locals.remove(i);
@@ -147,13 +148,16 @@ impl<'source> Compiler<'source> {
         }
     }
 
+    /// Add the name of a local to the local list in the Compiler. Only add to the list if their is the MAX
+    /// amount of locals have not alread been defined.
     fn add_local(&mut self, name: &'source str) {
         if self.locals.len() < Compiler::MAX_LOCALS {
             let depth = self.scope_depth;
             let local = Local::new(name, depth);
+            
             self.locals.push(Some(local));
         } else {
-            eprint!("Too many local variables in a function.");
+            panic!("Too many local variables in a function.");
         }
     }
 
@@ -171,6 +175,7 @@ impl<'source> Compiler<'source> {
         0
     }
 
+    /// Initialize the most recently added local variable.
     fn initialize_new_variable(&mut self) {
         let last = self.locals.last_mut().unwrap().as_mut().unwrap();   
         last.initialize();
@@ -182,7 +187,7 @@ impl<'source> Compiler<'source> {
 // ########################################################################################################
 
 /// ParseRule for parethesis.
-fn grouping<'source, 'chunk, 'compiler>(
+fn grouping<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
     current: &mut Compiler<'source>,
@@ -197,7 +202,7 @@ fn grouping<'source, 'chunk, 'compiler>(
 }
 
 /// Parse rule for print statement.
-fn printing<'source, 'chunk, 'compiler>(
+fn printing<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
     current: &mut Compiler<'source>,
@@ -207,9 +212,9 @@ fn printing<'source, 'chunk, 'compiler>(
 }
 
 /// Parse rule for numbers.
-fn number<'source, 'chunk, 'compiler>(
+fn number<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
-    scanner: &mut Scanner<'source>,
+    _scanner: &mut Scanner<'source>,
     _current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
@@ -224,9 +229,9 @@ fn number<'source, 'chunk, 'compiler>(
 }
 
 /// Parse rule for strings.
-fn string<'source, 'chunk, 'compiler>(
+fn string<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
-    scanner: &mut Scanner<'source>,
+    _scanner: &mut Scanner<'source>,
     _current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
@@ -238,13 +243,13 @@ fn string<'source, 'chunk, 'compiler>(
 }
 
 /// Parse rule for binary operations.
-fn binary<'source, 'chunk, 'compiler>(
+fn binary<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
     current: &mut Compiler<'source>,
     _can_assign: bool,
 ) {
-    let operator_type = parser.previous.as_ref().unwrap().kind.clone();
+    let operator_type = parser.previous.as_ref().unwrap().kind;
     let rule = get_rule(operator_type);
     let prec = rule.precedence as usize;
     parser.parse_precedence(Precedence::get_enum(prec), scanner, current);
@@ -265,7 +270,7 @@ fn binary<'source, 'chunk, 'compiler>(
 }
 
 /// Parse rule for literals.
-fn literal<'source, 'chunk, 'compiler>(
+fn literal<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     _scanner: &mut Scanner<'source>,
     _current: &mut Compiler<'source>,
@@ -280,7 +285,7 @@ fn literal<'source, 'chunk, 'compiler>(
 }
 
 /// Parse rule for unary Operations.
-fn unary<'source, 'chunk, 'compiler>(
+fn unary<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
     current: &mut Compiler<'source>,
@@ -608,18 +613,18 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
             return 0;
         }
 
-        let index = self.identifier_constant_prev();
-        return index;
+        self.identifier_constant_prev()
     }
 
     fn identifier_constant_prev(&mut self) -> usize {
         let token = self.previous.as_ref().unwrap();
         let value = allocate_object(token.slice.to_string());
-        let index = self.compiling_chunk.add_constant(value);
-        return index;
+        
+        self.compiling_chunk.add_constant(value)
     }
 
     pub fn declare_variable(&self, current: &mut Compiler<'source>) {
+        // look for global variables, instead of local variables
         if current.scope_depth == 0 {
             return;
         }
@@ -628,30 +633,39 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         let prev_name = <&str>::clone(&prev.slice);
 
         let mut to_remove: Option<usize> = None;
-        for (i, local) in current.locals.iter().rev().enumerate().skip(1) {
-            let local = local.as_ref().unwrap();
-            if local.depth != 0 && local.depth < current.scope_depth {
-                break;
-            }
 
-            // remove the local that is overshaddowed (it will never be refenced again),
-            // and add the new one at the end of the scope
-            if prev_name == local.name {
-                to_remove = Some(i);
-                break;
+        // Iterate through the list of locals *in the current depth* , if their is a variable that
+        // matches the name of the most recent variable, remove it (variable shadowing effect).
+        // Else add it to as a new local variable at the end.
+        for (i, local) in current.locals.iter().rev().enumerate() {
+            if let Some(l) = local {
+                // If not in the current depth, stop comparing variables.
+                if l.depth != 0 && l.depth < current.scope_depth {
+                    break;
+                }
+
+                // Remove the local that is overshaddowed (it will never be refenced again),
+                // and add the new one at the end of the scope.
+                if prev_name == l.name {
+                    to_remove = Some(current.locals.len() - i);  // The list is reversed, so the index is based on the 
+                                                                 // len of the array.
+                    break;
+                }
             }
         }
 
+        // Revome the variable if it is no longer needed
         if let Some(rmv) = to_remove {
             current.locals.remove(rmv);
         }
 
+        // Add local variable to the list of local variables.
         current.add_local(prev_name);
     }
 
     fn end_compiler(&mut self) {
         if DEBUG_PRINT_CODE && self.had_error {
-            disassemble_chunk(&self.compiling_chunk, "code");
+            disassemble_chunk(self.compiling_chunk, "code");
         }
         self.emit_return() // todo: should this be commented?
     }
@@ -685,7 +699,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
 // NOTE: not calling the function here, instead
 // returning the reference to the function to be called
 // in some other scope
-fn get_rule<'function, 'source, 'chunk, 'compiler>(kind: TokenKind) -> ParseRule<'function, 'source, 'chunk> {
+fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function, 'source, 'chunk> {
     match kind {
         TOKEN_LEFT_PAREN => ParseRule {
             prefix: Some(&grouping),

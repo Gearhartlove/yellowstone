@@ -136,7 +136,7 @@ fn local_var_declaration_test() {
 
 
 /* 
-// Develment Note: for whatever reason when I define a global variable, two of them are pushed 
+// Dev Note: for whatever reason when I define a global variable, two of them are pushed 
 // onto the constant stack. also I am not able to define multiple local variables in one scope.
 // Need to: 1) get multiple local vars working 2) understand global vars and local vars being constants.
 */
@@ -147,13 +147,17 @@ fn get_var_declaration_test() {
             {
                 var test = \"test\";
                 var lang = \"yellowstone\";
-                print lang;
+
+                assert("test", test);
             }
         ";
 
         // NOTE: this test will never fail, change run_code to return a result and match
         // on that result. Look into the anyhow crate for this :)
         let _ = run_code(&mut vm, source);
+
+        //assert_eq!(get_constant_name(&vm, 1), Some("test".to_string()));
+        //assert_eq!(get_constant_name(&vm, 2), Some("lang".to_string()));
 }
 
 #[test]
@@ -233,5 +237,14 @@ pub fn str_val(vm: &mut VM, variable_name: &'static str) -> Option<String> {
         }
     } else {
         return None;
+    }
+}
+
+pub fn get_constant_name(vm: &VM, i: usize) -> Option<String> {
+    return match vm.chunk.constants.get(i) {
+        Some(c) => {
+            Some(c.as_string().unwrap())
+        },
+        None => { None }
     }
 }
