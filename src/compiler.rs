@@ -374,6 +374,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                 && token.kind != TokenKind::TOKEN_NIL
                 && token.kind != TokenKind::TOKEN_TRUE
                 && token.kind != TokenKind::TOKEN_FALSE
+                && token.kind != TokenKind::TOKEN_ASSERT_EQ
             {
                 scanner.advance();
             }
@@ -457,6 +458,18 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.emit_byte(OP_PRINT);
     }
 
+    fn assert_statement(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
+        self.consume(TOKEN_SEMICOLON, "Expect '(' after assert statement.", scanner);
+        // Left side of the assert.
+        self.expression(scanner, current);
+        self.consume(TOKEN_COMMA, "Expect , after expression.", scanner);
+        // Right side of the assert.
+        self.expression(scanner, current);
+        self.consume(TOKEN_SEMICOLON, "Expect ')' after statement.", scanner);
+        self.consume(TOKEN_SEMICOLON, "Expect ';' after statement.", scanner);
+        self.emit_byte(OpCode::OP_ASSERT_EQ);
+    }
+
     /// An expression followed by a semicolon. How you write an expression in a context where a statement is
     /// expected.
     fn expression_statement(
@@ -533,6 +546,9 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                     TOKEN_RETURN => {
                         return;
                     }
+                    TOKEN_ASSERT => {
+                        return;
+                    }
                     _ => {} // do nothing
                 }
                 self.advance(scanner);
@@ -545,6 +561,9 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
             match t.kind {
                 TOKEN_PRINT => {
                     self.print_statement(scanner, current);
+                }
+                TOKEN_ASSERT => {
+                    self.assert_statement(scanner, current);
                 }
                 TOKEN_LEFT_BRACE => {
                     self.advance(scanner);
@@ -881,6 +900,7 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
             infix: None,
             precedence: Precedence::PREC_NONE,
         },
+        // statement not an expression
         TOKEN_VAR => ParseRule {
             prefix: None,
             infix: None,
@@ -901,5 +921,11 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
             infix: None,
             precedence: Precedence::PREC_NONE,
         },
+        // statement not an expression
+        TOKEN_ASSERT_EQ => ParseRule {
+            prefix: None, 
+            infix: None,
+            precedence: Precedence::PREC_NONE,
+        }
     }
 }

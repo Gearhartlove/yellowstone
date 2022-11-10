@@ -1,14 +1,20 @@
-// #[derive(Clone, Copy)]
-// pub enum YSErrorType {
-//     InterpretError,
-//     CompileError,
-//     RuntimeError,
-// }
+use std::{error::Error, fmt::Display};
+
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum InterpretError {
-    INTERPRET_COMPILE_ERROR,
-    INTERPRET_RUNTIME_ERROR,
-    INTERPRET_RUNTIME_UNRECOGNIZED_VARIABLE_ERROR,
+    COMPILE_ERROR,
+    RUNTIME_ERROR,
+    RUNTIME_UNRECOGNIZED_VARIABLE_ERROR,
+    RUNTIME_ASSERT_ERROR,
 }
+
+impl Display for InterpretError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "")
+    }
+}
+
+impl Error for InterpretError {}
+

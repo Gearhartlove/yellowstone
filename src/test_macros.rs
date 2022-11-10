@@ -18,7 +18,7 @@ macro_rules! assert_tokens_are {
                 // compare token to vec values
                 if let Some(t_kind) = temp_vec.get(i) {
                     assert_eq!(&parsed_token.kind, t_kind);
-                    if *t_kind != TokenKind::TOKEN_NIL && *t_kind != TokenKind::TOKEN_FALSE && *t_kind != TokenKind::TOKEN_TRUE && *t_kind != TokenKind::TOKEN_NUMBER && *t_kind != TokenKind::TOKEN_STRING && *t_kind != TokenKind::TOKEN_IDENTIFIER {
+                    if *t_kind != TokenKind::TOKEN_ASSERT && *t_kind != TokenKind::TOKEN_NIL && *t_kind != TokenKind::TOKEN_FALSE && *t_kind != TokenKind::TOKEN_TRUE && *t_kind != TokenKind::TOKEN_NUMBER && *t_kind != TokenKind::TOKEN_STRING && *t_kind != TokenKind::TOKEN_IDENTIFIER {
                         println!("{}", parsed_token.kind);
                         scanner.advance();
                     }

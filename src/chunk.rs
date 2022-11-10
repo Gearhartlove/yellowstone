@@ -26,6 +26,7 @@ pub enum OpCode {
     OP_DEFINE_GLOBAL(usize),
     OP_GET_GLOBAL(usize),
     OP_SET_GLOBAL(usize),
+    OP_ASSERT_EQ,
 }
 
 /// Contains the bytecode instructions as well as constants created from parsing tokens.

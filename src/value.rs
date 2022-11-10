@@ -1,5 +1,5 @@
 use crate::error::InterpretError;
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Formatter, Display};
 use std::mem::ManuallyDrop;
 use std::rc::Rc;
 
@@ -23,6 +23,19 @@ pub enum ValueKind {
     ValNil,
     ValNumber,
     ValObj,
+}
+
+impl Display for ValueKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let word = match self {
+            ValueKind::ValBool => "ValBool",
+            ValueKind::ValNil => "ValNil",
+            ValueKind::ValNumber => "ValNumber",
+            ValueKind::ValObj => "ValObj",
+        };
+
+        write!(f, "{}", word)
+    }
 }
 
 impl Clone for Value {
@@ -241,7 +254,7 @@ impl Value {
         if self.is_bool() {
             unsafe { Ok(self.u.b) }
         } else {
-            Err(InterpretError::INTERPRET_RUNTIME_ERROR)
+            Err(InterpretError::RUNTIME_ERROR)
         }
     }
 
@@ -249,7 +262,7 @@ impl Value {
         if self.is_nil() {
             unsafe { Ok(self.u.f) }
         } else {
-            Err(InterpretError::INTERPRET_RUNTIME_ERROR)
+            Err(InterpretError::RUNTIME_ERROR)
         }
     }
 
@@ -257,7 +270,7 @@ impl Value {
         if self.is_number() {
             unsafe { Ok(self.u.f) }
         } else {
-            Err(InterpretError::INTERPRET_RUNTIME_ERROR)
+            Err(InterpretError::RUNTIME_ERROR)
         }
     }
 
@@ -265,7 +278,7 @@ impl Value {
         if self.is_obj() {
             unsafe { Ok(Rc::clone(&self.u.o)) }
         } else {
-            Err(InterpretError::INTERPRET_RUNTIME_ERROR)
+            Err(InterpretError::RUNTIME_ERROR)
         }
     }
 
@@ -275,7 +288,7 @@ impl Value {
             Ok(obj.to_string().as_str().trim_matches('\"').to_string())
         } else {
             eprintln!("Error: cannot convert type to a string. It is not an object.");
-            Err(InterpretError::INTERPRET_RUNTIME_ERROR)
+            Err(InterpretError::RUNTIME_ERROR)
         }
     }
 

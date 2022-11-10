@@ -33,6 +33,7 @@ pub enum TokenKind {
     TOKEN_STRING,
     TOKEN_NUMBER,
     // Keywords.
+    TOKEN_ASSERT_EQ,
     TOKEN_AND,
     TOKEN_CLASS,
     TOKEN_ELSE,
@@ -319,7 +320,15 @@ impl<'source> Scanner<'source> {
         let c = self.start();
 
         match c {
-            "a" => return self.check_keyword(1, 2, "nd", TOKEN_AND),
+            "a" => {
+                if self.current - self.start > 1 {
+                    match self.start_next() {
+                        "n" => return self.check_keyword(2, 1, "d", TOKEN_AND),
+                        "s" => return self.check_keyword(2, 7, "sert_eq", TOKEN_ASSERT_EQ),
+                        _ => {}
+                    }
+                }
+            }
             "c" => return self.check_keyword(1, 4, "lass", TOKEN_CLASS),
             "e" => return self.check_keyword(1, 3, "lse", TOKEN_ELSE),
             "f" => {

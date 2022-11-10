@@ -2,11 +2,12 @@ use crate::chunk::{Chunk, OpCode, OpCode::*};
 use crate::compiler::compile;
 use crate::debug::disassemble_chunk;
 use crate::error::InterpretError;
-use crate::error::InterpretError::INTERPRET_RUNTIME_ERROR;
 use crate::table::Table;
-use crate::value::{allocate_object, ObjectHandler, Value};
+use crate::value::{allocate_object, ObjectHandler, Value, ValueKind};
 use std::collections::LinkedList;
 use std::rc::Rc;
+use anyhow::{Result, Context, Error};
+use InterpretError::*;
 
 #[allow(non_camel_case_types)]
 #[derive(PartialEq)]
@@ -34,7 +35,8 @@ impl VM {
     pub fn interpret(&mut self, source: &String) -> Result<Option<Value>, InterpretError> {
         let result = compile(source);
         match result {
-            Err(_) => return Err(InterpretError::INTERPRET_COMPILE_ERROR),
+            // todo: fix compile errors to be more descriptive.
+            Err(_) => return Err(InterpretError::COMPILE_ERROR),
             Ok(chunk) => {
                 self.chunk = chunk;
                 self.ip = 0; // Q
@@ -97,7 +99,7 @@ impl VM {
     }
 
     //Q: what happens when there are multiple chunks?
-    pub fn run(&mut self) -> Result<Option<Value>, InterpretError> {
+    pub fn run(&mut self) -> Result<Option<Value>> {
         // if debug flag enabled, print each instruction before execution
         if VM::DEBUG_EXECUTION_TRACING {
             for val in self.stack.iter() {
@@ -109,7 +111,7 @@ impl VM {
 
         loop {
             let instruction = self.read_byte();
-            let result = match instruction {
+            let result : Result<()> = match instruction {
                 OP_RETURN => {
                     //changed in the global variable chapter
                     return if let Some(v) = self.stack.pop() {
@@ -128,7 +130,8 @@ impl VM {
                 OP_NEGATE => {
                     if !Value::is_number(self.peek(0).unwrap()) {
                         eprintln!("Operand must be a number.");
-                        return Err(INTERPRET_RUNTIME_ERROR);
+                        return Err(RUNTIME_ERROR)
+                        //return Err(RUNTIME_ERROR);
                     }
                     let pop_val = self.stack.pop().unwrap();
                     let mut number = pop_val.as_number().unwrap();
@@ -139,7 +142,7 @@ impl VM {
                 OP_NOT => {
                     if Value::is_number(self.peek(0).unwrap()) {
                         eprintln!("Operand cannot be a number.");
-                        return Err(INTERPRET_RUNTIME_ERROR);
+                        return Err(RUNTIME_ERROR);
                     }
                     let val = self.pop();
                     self.push(Value::bool_val(VM::is_falsey(val)));
@@ -181,7 +184,7 @@ impl VM {
                         }
                         None => {
                             eprint!("Undefined variable: {}", key);
-                            Err(INTERPRET_RUNTIME_ERROR)
+                            Err(RUNTIME_ERROR)
                         }
                     }
                 }
@@ -191,7 +194,7 @@ impl VM {
                     match table_value {
                         None => {
                             eprintln!("Undefined variable: {}", key);
-                            Err(INTERPRET_RUNTIME_ERROR)
+                            Err(RUNTIME_ERROR)
                         }
                         _ => {
                             let updated_value = self.peek(0).unwrap().clone();
@@ -235,16 +238,36 @@ impl VM {
                         self.push(Value::number_value(a + b));
                         Ok(())
                     } else {
-                        eprintln!("Operands must be two numbers or two strings.");
-                        Err(INTERPRET_RUNTIME_ERROR)
+                        Err(RUNTIME_ERROR).context("Operands must be two numbers or two strings.")
                     }
-                    //binary_operator(self, '+')
                 }
                 OP_SUBTRACT => binary_operator(self, '-'),
                 OP_MULTIPLY => binary_operator(self, '*'),
                 OP_DIVIDE => binary_operator(self, '/'),
                 OP_DEBUG => {
                     unimplemented!()
+                }
+                OP_ASSERT_EQ => {
+                    let a = self.pop();
+                    let b = self.pop();
+                    if a.kind == b.kind {
+                        let result = match a.kind {
+                            ValueKind::ValBool => a.as_bool() == b.as_bool(),
+                            ValueKind::ValNil => a.as_nil() == b.as_nil(),
+                            ValueKind::ValNumber => a.as_number() == b.as_number(),
+                            ValueKind::ValObj => a.as_string() == b.as_string(),
+                        };
+                        if !result {
+                            Err(RUNTIME_ASSERT_ERROR).context(format!("Failed because assert values are not equal.
+                                left:  {:?} \n 
+                                right: {:?}", a, b))
+                        } else {
+                            Ok(())
+                        }
+                    } else {
+                        Err(RUNTIME_ERROR).context(format!("Failed to compare values of the same type. 
+                            left {} , right {}", a.kind, b.kind))
+                    }
                 }
                 OP_PRINT => {
                     let pop = self.pop();
@@ -269,19 +292,18 @@ impl VM {
     fn read_byte(&mut self) -> OpCode {
         let instruction = self.chunk.code.get(self.ip).unwrap().clone();
         self.ip += 1;
-        return instruction;
+        instruction
     }
 
     pub fn with_chunk(mut self, chunk: Chunk) -> Self {
         self.chunk = chunk;
-        return self;
+        self
     }
 }
 
-fn binary_operator(vm: &mut VM, op: char) -> Result<(), InterpretError> {
+fn binary_operator(vm: &mut VM, op: char) -> Result<()> {
     if !Value::is_number(vm.peek(0).unwrap()) || !Value::is_number(vm.peek(1).unwrap()) {
-        eprintln!("Operands must be numbers.");
-        return Err(INTERPRET_RUNTIME_ERROR);
+        return Err(RUNTIME_ERROR).context("Operands must be numbers");
     }
     let b: f32 = Value::as_number(&vm.stack.pop().unwrap()).unwrap();
     let a: f32 = Value::as_number(&vm.stack.pop().unwrap()).unwrap();
