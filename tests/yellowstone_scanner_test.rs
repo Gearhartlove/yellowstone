@@ -380,6 +380,6 @@ fn tokenizer_block_test() {
 
 #[test]
 fn tokenizer_assert_test() {
-    let source = String::from("assert(true, true)");
-    assert_tokens_are!(source, TOKEN_ASSERT, TOKEN_LEFT_PAREN, TOKEN_TRUE, TOKEN_COMMA, TOKEN_TRUE, TOKEN_RIGHT_PAREN, TOKEN_EOF);
+    let source = String::from("assert_eq(true, true)");
+    assert_tokens_are!(source, TOKEN_ASSERT_EQ, TOKEN_LEFT_PAREN, TOKEN_TRUE, TOKEN_COMMA, TOKEN_TRUE, TOKEN_RIGHT_PAREN, TOKEN_EOF);
 }

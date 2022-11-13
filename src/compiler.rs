@@ -164,14 +164,14 @@ impl<'source> Compiler<'source> {
     /// Walk the list of locals that are currently in scope. If one has the same name as the
     /// identifier token, the identifier must refer to that variable.
     fn resolve_local(&mut self, name: &'source str) -> usize {
-        for (i, local) in self.locals.iter().rev().enumerate() {
-            if let Some(l) = local {
-                if name == l.name && l.initialized {
-                    return (self.locals.len() - i) as usize
-                } 
+        for i in (0..self.locals.len()).rev() {
+            if let Some(l) = self.locals.get(i as usize) {
+                let l = l.as_ref().unwrap();
+                if l.name == name && l.initialized {
+                    return i
+                }
             }
         }
-
         0
     }
 
@@ -323,6 +323,7 @@ fn variable<'source, 'chunk>(
         if idx != 0 {
             (OpCode::OP_GET_LOCAL(idx), OpCode::OP_SET_LOCAL(idx))
         } else {
+            let idx = parser.identifier_constant_prev();
             (OpCode::OP_GET_GLOBAL(idx), OpCode::OP_SET_GLOBAL(idx))
         }
     };
@@ -458,14 +459,14 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.emit_byte(OP_PRINT);
     }
 
-    fn assert_statement(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
-        self.consume(TOKEN_SEMICOLON, "Expect '(' after assert statement.", scanner);
+    fn assert_eq_statement(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
+        self.consume(TOKEN_LEFT_PAREN, "Expect '(' after assert statement.", scanner);
         // Left side of the assert.
         self.expression(scanner, current);
-        self.consume(TOKEN_COMMA, "Expect , after expression.", scanner);
+        self.consume(TOKEN_COMMA, "Expect ',' after expression.", scanner);
         // Right side of the assert.
         self.expression(scanner, current);
-        self.consume(TOKEN_SEMICOLON, "Expect ')' after statement.", scanner);
+        self.consume(TOKEN_RIGHT_PAREN, "Expect ')' after statement.", scanner);
         self.consume(TOKEN_SEMICOLON, "Expect ';' after statement.", scanner);
         self.emit_byte(OpCode::OP_ASSERT_EQ);
     }
@@ -546,7 +547,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                     TOKEN_RETURN => {
                         return;
                     }
-                    TOKEN_ASSERT => {
+                    TOKEN_ASSERT_EQ => {
                         return;
                     }
                     _ => {} // do nothing
@@ -562,8 +563,10 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                 TOKEN_PRINT => {
                     self.print_statement(scanner, current);
                 }
-                TOKEN_ASSERT => {
-                    self.assert_statement(scanner, current);
+                TOKEN_ASSERT_EQ => {
+                    self.advance(scanner);
+
+                    self.assert_eq_statement(scanner, current);
                 }
                 TOKEN_LEFT_BRACE => {
                     self.advance(scanner);

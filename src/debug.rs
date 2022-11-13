@@ -93,7 +93,7 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
         OP_DIVIDE => simple_instruction("OP_DIVIDE", offset),
         OP_PRINT => simple_instruction("OP_PRINT", offset),
         OP_POP => simple_instruction("OP_POP", offset),
-        OP_ASSERT_EQ => simple_instruction("OP_ASSERT", offset),
+        OP_ASSERT_EQ => simple_instruction("OP_ASSERT_EQ", offset),
         OP_DEBUG => {
             todo!()
         }

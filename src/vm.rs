@@ -6,7 +6,7 @@ use crate::table::Table;
 use crate::value::{allocate_object, ObjectHandler, Value, ValueKind};
 use std::collections::LinkedList;
 use std::rc::Rc;
-use anyhow::{Result, Context, Error};
+use anyhow::{Result, Context};
 use InterpretError::*;
 
 #[allow(non_camel_case_types)]
@@ -32,17 +32,16 @@ pub struct VM {
 impl VM {
     pub const DEBUG_EXECUTION_TRACING: bool = true;
 
-    pub fn interpret(&mut self, source: &String) -> Result<Option<Value>, InterpretError> {
+    pub fn interpret(&mut self, source: &String) -> Result<Option<Value>> {
         let result = compile(source);
         match result {
             // todo: fix compile errors to be more descriptive.
-            Err(_) => return Err(InterpretError::COMPILE_ERROR),
+            Err(_) => Err(InterpretError::COMPILE_ERROR).context("need to implement still..."),
             Ok(chunk) => {
                 self.chunk = chunk;
                 self.ip = 0; // Q
 
-                let result = self.run();
-                return result;
+                self.run()
             }
         }
     }
@@ -129,9 +128,7 @@ impl VM {
                 }
                 OP_NEGATE => {
                     if !Value::is_number(self.peek(0).unwrap()) {
-                        eprintln!("Operand must be a number.");
-                        return Err(RUNTIME_ERROR)
-                        //return Err(RUNTIME_ERROR);
+                        return Err(RUNTIME_ERROR).context("Operand must be a number")
                     }
                     let pop_val = self.stack.pop().unwrap();
                     let mut number = pop_val.as_number().unwrap();
@@ -141,8 +138,7 @@ impl VM {
                 }
                 OP_NOT => {
                     if Value::is_number(self.peek(0).unwrap()) {
-                        eprintln!("Operand cannot be a number.");
-                        return Err(RUNTIME_ERROR);
+                        return Err(RUNTIME_ERROR).context("Operand cannot be a number")
                     }
                     let val = self.pop();
                     self.push(Value::bool_val(VM::is_falsey(val)));
@@ -183,8 +179,7 @@ impl VM {
                             Ok(())
                         }
                         None => {
-                            eprint!("Undefined variable: {}", key);
-                            Err(RUNTIME_ERROR)
+                            Err(RUNTIME_ERROR).context(format!("Undefined variable: {}", key))
                         }
                     }
                 }
@@ -193,8 +188,7 @@ impl VM {
                     let table_value = self.table.get(key.as_str());
                     match table_value {
                         None => {
-                            eprintln!("Undefined variable: {}", key);
-                            Err(RUNTIME_ERROR)
+                            Err(RUNTIME_ERROR).context(format!("Undefined variable: {}", key))
                         }
                         _ => {
                             let updated_value = self.peek(0).unwrap().clone();
@@ -265,8 +259,7 @@ impl VM {
                             Ok(())
                         }
                     } else {
-                        Err(RUNTIME_ERROR).context(format!("Failed to compare values of the same type. 
-                            left {} , right {}", a.kind, b.kind))
+                        Err(RUNTIME_ERROR).context(format!("Failed to compare values of the same type. left {} , right {}", a.kind, b.kind))
                     }
                 }
                 OP_PRINT => {
