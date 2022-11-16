@@ -117,7 +117,7 @@ impl<'source> Compiler<'source> {
     /// Instantiate a new compiler for local variables. Push a None onto the array b/c
     /// that slot will be used to determine if their are no local variables in scope.
     fn new() -> Self {
-        let v: Vec<Option<Local<'source>>> = vec!(None);
+        let v: Vec<Option<Local<'source>>> = vec![None];
 
         Compiler {
             locals: v,
@@ -154,7 +154,7 @@ impl<'source> Compiler<'source> {
         if self.locals.len() < Compiler::MAX_LOCALS {
             let depth = self.scope_depth;
             let local = Local::new(name, depth);
-            
+
             self.locals.push(Some(local));
         } else {
             panic!("Too many local variables in a function.");
@@ -166,9 +166,10 @@ impl<'source> Compiler<'source> {
     fn resolve_local(&mut self, name: &'source str) -> usize {
         for i in (0..self.locals.len()).rev() {
             if let Some(l) = self.locals.get(i as usize) {
-                let l = l.as_ref().unwrap();
-                if l.name == name && l.initialized {
-                    return i
+                if let Some(l) = l {
+                    if l.name == name && l.initialized {//&& l.depth != 0 {
+                        return i;
+                    }
                 }
             }
         }
@@ -177,7 +178,7 @@ impl<'source> Compiler<'source> {
 
     /// Initialize the most recently added local variable.
     fn initialize_new_variable(&mut self) {
-        let last = self.locals.last_mut().unwrap().as_mut().unwrap();   
+        let last = self.locals.last_mut().unwrap().as_mut().unwrap();
         last.initialize();
     }
 }
@@ -328,7 +329,7 @@ fn variable<'source, 'chunk>(
         }
     };
 
-    // TODO: do I need this? 
+    // TODO: do I need this?
     // let index = parser.identifier_constant_prev();
 
     // Set variable
@@ -459,8 +460,16 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.emit_byte(OP_PRINT);
     }
 
-    fn assert_eq_statement(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
-        self.consume(TOKEN_LEFT_PAREN, "Expect '(' after assert statement.", scanner);
+    fn assert_eq_statement(
+        &mut self,
+        scanner: &mut Scanner<'source>,
+        current: &mut Compiler<'source>,
+    ) {
+        self.consume(
+            TOKEN_LEFT_PAREN,
+            "Expect '(' after assert statement.",
+            scanner,
+        );
         // Left side of the assert.
         self.expression(scanner, current);
         self.consume(TOKEN_COMMA, "Expect ',' after expression.", scanner);
@@ -641,7 +650,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
     fn identifier_constant_prev(&mut self) -> usize {
         let token = self.previous.as_ref().unwrap();
         let value = allocate_object(token.slice.to_string());
-        
+
         self.compiling_chunk.add_constant(value)
     }
 
@@ -669,8 +678,8 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                 // Remove the local that is overshaddowed (it will never be refenced again),
                 // and add the new one at the end of the scope.
                 if prev_name == l.name {
-                    to_remove = Some(current.locals.len() - i);  // The list is reversed, so the index is based on the 
-                                                                 // len of the array.
+                    to_remove = Some(current.locals.len() - i); // The list is reversed, so the index is based on the
+                                                                // len of the array.
                     break;
                 }
             }
@@ -926,9 +935,9 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
         },
         // statement not an expression
         TOKEN_ASSERT_EQ => ParseRule {
-            prefix: None, 
+            prefix: None,
             infix: None,
             precedence: Precedence::PREC_NONE,
-        }
+        },
     }
 }

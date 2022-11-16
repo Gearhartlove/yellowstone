@@ -4,9 +4,9 @@ use crate::debug::disassemble_chunk;
 use crate::error::InterpretError;
 use crate::table::Table;
 use crate::value::{allocate_object, ObjectHandler, Value, ValueKind};
+use anyhow::{Context, Result};
 use std::collections::LinkedList;
 use std::rc::Rc;
-use anyhow::{Result, Context};
 use InterpretError::*;
 
 #[allow(non_camel_case_types)]
@@ -67,7 +67,6 @@ impl VM {
         self.stack.get(self.stack.len() - from_top - 1)
     }
 
-
     // Pushes the newly created object to the objects linked list. Ensures the Value is of type object.
     fn track_object(&mut self, val: &Value) {
         if !val.is_obj() {
@@ -110,7 +109,7 @@ impl VM {
 
         loop {
             let instruction = self.read_byte();
-            let result : Result<()> = match instruction {
+            let result: Result<()> = match instruction {
                 OP_RETURN => {
                     //changed in the global variable chapter
                     return if let Some(v) = self.stack.pop() {
@@ -128,7 +127,7 @@ impl VM {
                 }
                 OP_NEGATE => {
                     if !Value::is_number(self.peek(0).unwrap()) {
-                        return Err(RUNTIME_ERROR).context("Operand must be a number")
+                        return Err(RUNTIME_ERROR).context("Operand must be a number");
                     }
                     let pop_val = self.stack.pop().unwrap();
                     let mut number = pop_val.as_number().unwrap();
@@ -138,7 +137,7 @@ impl VM {
                 }
                 OP_NOT => {
                     if Value::is_number(self.peek(0).unwrap()) {
-                        return Err(RUNTIME_ERROR).context("Operand cannot be a number")
+                        return Err(RUNTIME_ERROR).context("Operand cannot be a number");
                     }
                     let val = self.pop();
                     self.push(Value::bool_val(VM::is_falsey(val)));
@@ -178,18 +177,14 @@ impl VM {
                             self.push(stack_value);
                             Ok(())
                         }
-                        None => {
-                            Err(RUNTIME_ERROR).context(format!("Undefined variable: {}", key))
-                        }
+                        None => Err(RUNTIME_ERROR).context(format!("Undefined variable: {}", key)),
                     }
                 }
                 OP_SET_GLOBAL(index) => {
                     let key = self.chunk.get_constant_name(&index).unwrap();
                     let table_value = self.table.get(key.as_str());
                     match table_value {
-                        None => {
-                            Err(RUNTIME_ERROR).context(format!("Undefined variable: {}", key))
-                        }
+                        None => Err(RUNTIME_ERROR).context(format!("Undefined variable: {}", key)),
                         _ => {
                             let updated_value = self.peek(0).unwrap().clone();
                             self.table.delete(key.as_str());
@@ -252,14 +247,20 @@ impl VM {
                             ValueKind::ValObj => a.as_string() == b.as_string(),
                         };
                         if !result {
-                            Err(RUNTIME_ASSERT_ERROR).context(format!("Failed because assert values are not equal.
+                            Err(RUNTIME_ASSERT_ERROR).context(format!(
+                                "Failed because assert values are not equal.
                                 left:  {:?} \n 
-                                right: {:?}", a, b))
+                                right: {:?}",
+                                b, a
+                            ))
                         } else {
                             Ok(())
                         }
                     } else {
-                        Err(RUNTIME_ERROR).context(format!("Failed to compare values of the same type. left {} , right {}", a.kind, b.kind))
+                        Err(RUNTIME_ERROR).context(format!(
+                            "Failed to compare values of the same type. left {} , right {}",
+                            a.kind, b.kind
+                        ))
                     }
                 }
                 OP_PRINT => {

@@ -1,11 +1,9 @@
 extern crate core;
 
-use std::fmt::{Debug, Display};
-use yellowstone::error::InterpretError::{*, self};
-use yellowstone::value::{allocate_object, Value, ValueKind, ValueUnion};
+use anyhow::Result;
+use std::fmt::Display;
+use yellowstone::value::{Value, ValueKind};
 use yellowstone::vm::VM;
-use anyhow::{Result, Error};
-
 
 #[test]
 fn compiler_unary() {
@@ -74,16 +72,21 @@ fn compiler_asserteq_bool_test() {
     let mut vm = VM::default();
     let source = "var foo = true; assert_eq(foo, true);";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{:?}", result); assert!(false) }
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
 }
-
 
 #[test]
 fn compiler_asserteq_num_test() {
     let mut vm = VM::default();
     let source = "var foo = 42; assert_eq(foo, 42);";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{:?}", result); assert!(false) }
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
 }
 
 #[test]
@@ -91,7 +94,10 @@ fn compiler_asserteq_nil_test() {
     let mut vm = VM::default();
     let source = "var foo = nil; assert_eq(foo, nil);";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{:?}", result); assert!(false) }
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
 }
 
 #[test]
@@ -99,15 +105,21 @@ fn compiler_asserteq_string_test() {
     let mut vm = VM::default();
     let source = "var foo = \"foo\"; assert_eq(foo, \"foo\");";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{:?}", result); assert!(false) }
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
 }
-
 
 #[test]
 fn global_var_test() {
     let mut vm = VM::default();
     let source = "var lang = \"yellowstone\";";
-    run_code(&mut vm, source);
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
 }
 
 #[test]
@@ -125,7 +137,10 @@ fn global_var_declaration() {
         assert_eq(nil, nil);
     ";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{:?}", result); assert!(false) }
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
 }
 
 #[test]
@@ -136,7 +151,10 @@ fn mutate_global_vars_test() {
         var breakfast = \"beignets with \" + beverage;
         assert_eq(breakfast, \"beignets with cafe au lait\");";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{:?}", result); assert!(false) }
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
 }
 
 #[test]
@@ -148,7 +166,10 @@ fn local_var_declaration_test() {
         }
     ";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{:?}", result); assert!(false) }
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
 }
 
 #[test]
@@ -161,7 +182,10 @@ fn get_var_declaration_test() {
         }
     ";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{:?}", result); assert!(false) }
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
 }
 
 #[test]
@@ -170,13 +194,34 @@ fn global_local_interaction_test() {
     let source = "
         var foo = \"yellow\";
         {
-            var lang = \"stone\";
-            foo = foo + lang;
+            var bar = \"stone\";
+            foo = foo + bar;
         }
-        assert_eq!(foo, \"yellowstone\");
+        assert_eq(foo, \"yellowstone\");
     ";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{:?}", result); assert!(false) }
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
+}
+
+#[test]
+fn global_local_nums_interaction_test() {
+    let mut vm = VM::default();
+    let source = "
+        var foo = 9;
+        {
+            var bar = 1;
+            foo = foo + bar;
+        }
+        assert_eq(foo, 10);
+    ";
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
 }
 
 // #[test]
@@ -207,7 +252,7 @@ pub fn num_val(vm: &mut VM, variable_name: &'static str) -> Option<f32> {
     if let Some(value) = vm.table.get(variable_name) {
         match value.kind {
             ValueKind::ValNumber => Some(value.as_number().unwrap()),
-            _ => { None }
+            _ => None,
         }
     } else {
         return None;
@@ -218,7 +263,7 @@ pub fn nil_val(vm: &mut VM, variable_name: &'static str) -> Option<f32> {
     if let Some(value) = vm.table.get(variable_name) {
         match value.kind {
             ValueKind::ValNil => Some(value.as_nil().unwrap()),
-            _ => { None }
+            _ => None,
         }
     } else {
         return None;
@@ -229,7 +274,7 @@ pub fn bool_val(vm: &mut VM, variable_name: &'static str) -> Option<bool> {
     if let Some(value) = vm.table.get(variable_name) {
         match value.kind {
             ValueKind::ValBool => Some(value.as_bool().unwrap()),
-            _ => { None }
+            _ => None,
         }
     } else {
         return None;
@@ -240,7 +285,7 @@ pub fn str_val(vm: &mut VM, variable_name: &'static str) -> Option<String> {
     if let Some(value) = vm.table.get(variable_name) {
         match value.kind {
             ValueKind::ValObj => Some(value.as_string().unwrap()),
-            _ => { None }
+            _ => None,
         }
     } else {
         return None;
@@ -249,9 +294,7 @@ pub fn str_val(vm: &mut VM, variable_name: &'static str) -> Option<String> {
 
 pub fn get_constant_name(vm: &VM, i: usize) -> Option<String> {
     return match vm.chunk.constants.get(i) {
-        Some(c) => {
-            Some(c.as_string().unwrap())
-        },
-        None => { None }
-    }
+        Some(c) => Some(c.as_string().unwrap()),
+        None => None,
+    };
 }
