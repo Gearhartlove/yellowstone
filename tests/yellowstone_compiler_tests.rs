@@ -1,9 +1,10 @@
 extern crate core;
 
-use anyhow::Result;
+use anyhow::{Result, Context};
 use std::fmt::Display;
 use yellowstone::value::{Value, ValueKind};
 use yellowstone::vm::VM;
+use yellowstone::error::InterpretError::{*, self};
 
 #[test]
 fn compiler_unary() {
@@ -76,6 +77,13 @@ fn compiler_asserteq_bool_test() {
         eprintln!("{:?}", result);
         assert!(false)
     }
+}
+
+#[test]
+fn compiler_asserteq_fail_test() {
+    let mut vm = VM::default();
+    let source = "var foo = true; assert_eq(foo, false);";
+    run_code_expect_error(&mut vm, source, RUNTIME_ASSERT_ERROR);
 }
 
 #[test]
@@ -241,6 +249,27 @@ fn global_local_nums_interaction_test() {
 }
 
 #[test]
+fn multiple_blocks_global_interaction_test() {
+    let mut vm = VM::default();
+    let source = "
+        var foo = 0;
+        {
+            foo = foo + 1;
+        }
+        {
+            var bar = 2;
+            foo = foo - bar;
+        }
+        assert_eq(foo, -1);
+    ";
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
+}
+
+#[test]
 fn multiple_blocks_test() {
     let mut vm = VM::default();
     let source = "
@@ -262,7 +291,34 @@ fn multiple_blocks_test() {
 }
 
 #[test]
-fn variable_shadowing_test() {
+fn variable_dropping_block_test() {
+    let mut vm = VM::default();
+    let source = "
+        {
+            var foo = \"Hello World!\";
+        }
+
+        {
+            print foo;
+        }
+    ";
+    run_code_expect_error(&mut vm, source, RUNTIME_UNRECOGNIZED_VARIABLE_ERROR);
+}
+
+#[test]
+fn variable_dropping_global_test() {
+    let mut vm = VM::default();
+    let source = "
+        {
+            var foo = \"Hello World!\";
+        }
+        print foo;
+    ";
+    run_code_expect_error(&mut vm, source, RUNTIME_UNRECOGNIZED_VARIABLE_ERROR);
+}
+
+#[test]
+fn variable_local_shadowing_test() {
     let mut vm = VM::default();
     let source = "
         {
@@ -278,28 +334,51 @@ fn variable_shadowing_test() {
     }
 }
 
-// #[test]
-// fn undefined_local_error_test() {
-//     let mut vm = VM::default();
-//         let source = "
-//             {
-//                 var lang = \"yellowstone\";
-//             }
-//             lang
-//         ";
-
-//         // NOTE: this test will never fail, change run_code to return a result and match
-//         // on that result. Look into the anyhow crate for this :)
-//         let result = run_code(&mut vm, source);
-//         assert_eq!(result, InterpretError::INTERPRET_RUNTIME_UNRECOGNIZED_VARIABLE_ERROR);
-// }
+#[test]
+fn variable_local_global_shadowing_test() {
+    let mut vm = VM::default();
+    let source = "
+        var foo = \"first\";
+        {
+            var foo = \"second\";
+            assert_eq(foo, \"second\");
+        }
+        assert_eq(foo, \"first\");
+    ";
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
+}
 
 // ################################################################################
 // Helper Functions
 // ################################################################################
 
-pub fn run_code<T: ToString + Display>(vm: &mut VM, code: T) -> Result<Option<Value>> {
-    vm.interpret(&code.to_string())
+pub fn run_code<T: ToString + Display>(vm: &mut VM, source: T) -> Result<Option<Value>> {
+    vm.interpret(&source.to_string())
+}
+
+pub fn run_code_expect_value<T: ToString + Display>(vm: &mut VM, source: T, expect: Option<Value>) {
+    let result = run_code(vm, source);
+    match result {
+        Ok(v) => {
+            assert_eq!(expect, v);
+        },
+        _ => { eprintln!("error returned when value expected"); assert!(false) }
+    }
+}
+
+pub fn run_code_expect_error<T: ToString + Display>(vm: &mut VM, source: T, expect: InterpretError) {
+    let result = run_code(vm, source);
+    match result {
+        Err(e) => {
+            let root = e.root_cause();
+            assert_eq!(format!("{}", root), expect.to_string());
+        },
+        _ => { eprintln!("value returned when error expected"); assert!(false) }
+    }
 }
 
 pub fn num_val(vm: &mut VM, variable_name: &'static str) -> Option<f32> {

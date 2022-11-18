@@ -36,7 +36,7 @@ impl VM {
         let result = compile(source);
         match result {
             // todo: fix compile errors to be more descriptive.
-            Err(_) => Err(InterpretError::COMPILE_ERROR).context("need to implement still..."),
+            Err(e) => Err(e),
             Ok(chunk) => {
                 self.chunk = chunk;
                 self.ip = 0; // Q
@@ -177,14 +177,14 @@ impl VM {
                             self.push(stack_value);
                             Ok(())
                         }
-                        None => Err(RUNTIME_ERROR).context(format!("Undefined variable: {}", key)),
+                        None => Err(RUNTIME_UNRECOGNIZED_VARIABLE_ERROR).context(format!("undefined variable: {}", key)),
                     }
                 }
                 OP_SET_GLOBAL(index) => {
                     let key = self.chunk.get_constant_name(&index).unwrap();
                     let table_value = self.table.get(key.as_str());
                     match table_value {
-                        None => Err(RUNTIME_ERROR).context(format!("Undefined variable: {}", key)),
+                        None => Err(RUNTIME_ERROR).context(format!("undefined variable: {}", key)),
                         _ => {
                             let updated_value = self.peek(0).unwrap().clone();
                             self.table.delete(key.as_str());
@@ -197,13 +197,18 @@ impl VM {
                 // Loads the value from that index then pushes it on top of the stack
                 // where later instructions can find it.
                 OP_GET_LOCAL(index) => {
-                    let local = self.chunk.constants.get(index).unwrap().clone();
-                    for (i, val) in self.chunk.constants.iter().enumerate() {
-                        print!("{} ", i);
-                        Value::print(val);
+                    let local = self.chunk.constants.get(index);
+                    match local {
+                        Some(l) => {
+                            for (i, val) in self.chunk.constants.iter().enumerate() {
+                                print!("{} ", i);
+                                Value::print(val);
+                            }
+                            self.push(l.clone());
+                            Ok(())
+                        },
+                        None => Err(RUNTIME_UNRECOGNIZED_VARIABLE_ERROR)?,
                     }
-                    self.push(local);
-                    Ok(())
                 }
                 // TODO set a local value
                 OP_SET_LOCAL(index) => {

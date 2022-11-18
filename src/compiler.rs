@@ -1,15 +1,17 @@
 use crate::chunk::OpCode::OP_PRINT;
 use crate::chunk::{Chunk, OpCode};
 use crate::debug::disassemble_chunk;
+use crate::error::InterpretError;
 use crate::scanner::TokenKind::*;
 use crate::scanner::{Scanner, Token, TokenKind};
 use crate::value::{allocate_object, Value};
+use anyhow::{Result};
 
 const DEBUG_PRINT_CODE: bool = false;
 
 /// For a given chunk, scans each token and then parses the token's scanned. The compiler evaluates
 /// whether grammar rules are followed, as well as correct evaluation of precedence levels.
-pub fn compile(source: &String) -> Result<Chunk, ()> {
+pub fn compile(source: &String) -> Result<Chunk> {
     let mut current_chunk = Chunk::default();
     let mut scanner = Scanner::from(source);
     let mut parser = Parser::new(&mut current_chunk);
@@ -20,7 +22,7 @@ pub fn compile(source: &String) -> Result<Chunk, ()> {
     }
     parser.end_compiler();
     match parser.had_error {
-        true => Err(()),
+        true => Err(InterpretError::COMPILE_ERROR)?,
         false => Ok(current_chunk),
     }
 }
@@ -135,6 +137,7 @@ impl<'source> Compiler<'source> {
     /// and emit an OP_POP OpCode to ???. TODO: understand the OP_POP here.
     fn end_scope(&mut self, parser: &mut Parser) {
         self.scope_depth -= 1;
+        let mut pop_count = 0;
 
         if self.locals.len() > 1 {
             // let mut remove_count = 0;
@@ -145,10 +148,15 @@ impl<'source> Compiler<'source> {
                 // the current scope.
                 if consider_depth > self.scope_depth {
                     parser.emit_byte(OpCode::OP_POP);
+                    pop_count += 1;
                 } else {
                     break
                 }
             }
+        }
+
+        for _ in 0..pop_count {
+            self.locals.pop();
         }
     }
 
