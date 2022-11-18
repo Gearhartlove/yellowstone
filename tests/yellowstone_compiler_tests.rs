@@ -189,6 +189,22 @@ fn get_var_declaration_test() {
 }
 
 #[test]
+fn get_local_and_global_vars_test() {
+    let mut vm = VM::default();
+    let source = "
+        var start = \"yellow\";
+        {
+            var end = \"stone\";
+
+            assert_eq(end, \"stone\");
+            assert_eq(start, \"yellow\");
+        }
+    ";
+    let result = run_code(&mut vm, source);
+    if result.is_err() { eprintln!("{:?}", result); assert!(false) }
+}
+
+#[test]
 fn global_local_interaction_test() {
     let mut vm = VM::default();
     let source = "
@@ -216,6 +232,44 @@ fn global_local_nums_interaction_test() {
             foo = foo + bar;
         }
         assert_eq(foo, 10);
+    ";
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
+}
+
+#[test]
+fn multiple_blocks_test() {
+    let mut vm = VM::default();
+    let source = "
+        {
+            var foo = \"Hello World!\";
+            assert_eq(foo, \"Hello World!\");
+        }
+
+        {
+            var bar = 10;
+            assert_eq(bar, 10);
+        }
+    ";
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{:?}", result);
+        assert!(false)
+    }
+}
+
+#[test]
+fn variable_shadowing_test() {
+    let mut vm = VM::default();
+    let source = "
+        {
+            var foo = \"Hello World!\";
+            var foo = \"Yellowstone\";
+            assert_eq(foo, \"Yellowstone\");
+        }
     ";
     let result = run_code(&mut vm, source);
     if result.is_err() {

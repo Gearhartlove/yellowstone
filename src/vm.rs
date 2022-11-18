@@ -198,6 +198,10 @@ impl VM {
                 // where later instructions can find it.
                 OP_GET_LOCAL(index) => {
                     let local = self.chunk.constants.get(index).unwrap().clone();
+                    for (i, val) in self.chunk.constants.iter().enumerate() {
+                        print!("{} ", i);
+                        Value::print(val);
+                    }
                     self.push(local);
                     Ok(())
                 }
@@ -254,6 +258,7 @@ impl VM {
                                 b, a
                             ))
                         } else {
+                            self.push(Value::bool_val(true));
                             Ok(())
                         }
                     } else {

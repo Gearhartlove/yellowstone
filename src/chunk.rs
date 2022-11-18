@@ -56,12 +56,11 @@ impl Chunk {
     /// Adds a constant to the chunk. Returns the index of that constant to locate later.
     pub fn add_constant(&mut self, constant: Value) -> usize {
         self.constants.push(constant);
-        let index = self.constants.len() - 1;
-        return index;
+        self.constants.len() - 1
     }
 
     /// With a provided index, get the key to a constant value in the current chunk, stored in the VM's hashmap.
-    pub fn get_constant_name(&self, index: &usize) -> Result<String, ()> {
+    pub(crate) fn get_constant_name(&self, index: &usize) -> Result<String, ()> {
         if let Some(value) = self.constants.get(*index) {
             Ok(value.as_string().unwrap())
         } else {

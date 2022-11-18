@@ -16,6 +16,14 @@ pub union ValueUnion {
     o: ManuallyDrop<Rc<dyn ObjectHandler>>,
 }
 
+type YSObject = ManuallyDrop<Rc<dyn ObjectHandler>>;
+
+// impl Display for YSObject {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+//         write!("testtesttest")
+//     }
+// }
+
 #[repr(u32)]
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum ValueKind {
@@ -148,34 +156,25 @@ impl PartialEq for Value {
 }
 
 impl Debug for Value {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, fmtr: &mut Formatter<'_>) -> std::fmt::Result {
         unsafe {
             match self {
                 Value {
                     kind: ValueKind::ValBool,
                     u: ValueUnion { b },
-                } => formatter
-                    .debug_struct("Value")
-                    .field("bool_value", b)
-                    .finish(),
+                } => write!(fmtr, "{}", b),
                 Value {
                     kind: ValueKind::ValNil,
                     u: ValueUnion { f },
-                } => formatter.debug_struct("Value").field("nil_val", f).finish(),
+                } => write!(fmtr, "{}", f), 
                 Value {
                     kind: ValueKind::ValNumber,
-                    u: ValueUnion { f },
-                } => formatter
-                    .debug_struct("Value")
-                    .field("number_value", f)
-                    .finish(),
+                    u: ValueUnion { f},
+                } => write!(fmtr, "{}", f),
                 Value {
                     kind: ValueKind::ValObj,
                     u: ValueUnion { o },
-                } => formatter
-                    .debug_struct("Object")
-                    .field("object_value", o)
-                    .finish(),
+                } => write!(fmtr, "{}", o.to_string()),
             }
         }
     }
@@ -186,7 +185,8 @@ impl Value {
         if a.kind != b.kind {
             return false;
         }
-        return match a.kind {
+
+        match a.kind {
             ValueKind::ValBool => Value::as_bool(&a) == Value::as_bool(&b),
             ValueKind::ValNil => true,
             ValueKind::ValNumber => Value::as_number(&a) == Value::as_number(&b),
@@ -196,10 +196,10 @@ impl Value {
 
                 string_a == string_b
             }
-        };
+        }
     }
 
-    fn print_value(self) {
+    pub fn print(&self) {
         match self.kind {
             ValueKind::ValBool => {
                 println!("{}", self.as_bool().unwrap())
@@ -295,47 +295,39 @@ impl Value {
     // check the kind of a value and return true or false
     pub fn is_bool(&self) -> bool {
         unsafe {
-            match self {
-                Value {
+            matches!(
+                self, Value {
                     kind: ValueKind::ValBool,
                     u: ValueUnion { b: _b },
-                } => true,
-                _ => false,
-            }
+                })
         }
     }
 
     pub fn is_nil(&self) -> bool {
-        match self {
-            Value {
+        matches!(
+            self, Value {
                 kind: ValueKind::ValNil,
                 u: ValueUnion { f: _ },
-            } => true,
-            _ => false,
-        }
+            })
     }
 
     pub fn is_number(&self) -> bool {
         unsafe {
-            match self {
-                Value {
+            matches!(
+                self, Value {
                     kind: ValueKind::ValNumber,
                     u: ValueUnion { f: _f },
-                } => true,
-                _ => false,
-            }
+                })
         }
     }
 
     pub fn is_obj(&self) -> bool {
         unsafe {
-            match self {
-                Value {
+            matches!(
+                self, Value {
                     kind: ValueKind::ValObj,
                     u: ValueUnion { o: _o },
-                } => true,
-                _ => false,
-            }
+                })
         }
     }
 
@@ -367,7 +359,7 @@ where
 pub trait ObjectHandler: std::fmt::Debug {
     fn kind(self: Rc<Self>) -> ObjKind;
 
-    fn to_string(self: Rc<Self>) -> String {
+    fn to_string(&self) -> String {
         format!("{:?}", self)
     }
 }

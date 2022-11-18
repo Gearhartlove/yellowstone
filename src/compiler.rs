@@ -88,14 +88,16 @@ struct Local<'source> {
     pub name: &'source str,
     pub depth: usize,
     pub initialized: bool,
+    pub index: Option<usize>,
 }
 
 impl<'source> Local<'source> {
-    pub fn new(name: &'source str, depth: usize) -> Self {
+    pub fn new(name: &'source str, depth: usize, i: usize) -> Self {
         Local {
             name,
             depth,
             initialized: false,
+            index: Some(i),
         }
     }
 
@@ -135,14 +137,16 @@ impl<'source> Compiler<'source> {
         self.scope_depth -= 1;
 
         if self.locals.len() > 1 {
-            for i in (self.locals.len() - 1)..0 {
-                let consider_depth = self.locals.get(i as usize).unwrap().as_ref().unwrap().depth;
+            // let mut remove_count = 0;
 
+            for l in self.locals.iter().rev().flatten() {
+                let consider_depth = l.depth;
                 // Remove the local from the locals register if it's scope is greater than
                 // the current scope.
                 if consider_depth > self.scope_depth {
                     parser.emit_byte(OpCode::OP_POP);
-                    self.locals.remove(i);
+                } else {
+                    break
                 }
             }
         }
@@ -150,10 +154,10 @@ impl<'source> Compiler<'source> {
 
     /// Add the name of a local to the local list in the Compiler. Only add to the list if their is the MAX
     /// amount of locals have not alread been defined.
-    fn add_local(&mut self, name: &'source str) {
+    fn add_local(&mut self, name: &'source str, i: usize) {
         if self.locals.len() < Compiler::MAX_LOCALS {
             let depth = self.scope_depth;
-            let local = Local::new(name, depth);
+            let local = Local::new(name, depth, i);
 
             self.locals.push(Some(local));
         } else {
@@ -163,17 +167,26 @@ impl<'source> Compiler<'source> {
 
     /// Walk the list of locals that are currently in scope. If one has the same name as the
     /// identifier token, the identifier must refer to that variable.
+    // fn resolve_local(&mut self, name: &'source str) -> usize {
+    //     for i in (0..self.locals.len()).rev() {
+    //         if let Some(l) = self.locals.get(i as usize) {
+    //             if let Some(l) = l {
+    //                 if l.name == name && l.initialized {//&& l.depth != 0 {
+    //                     return i;
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     0
+    // }
+
     fn resolve_local(&mut self, name: &'source str) -> usize {
-        for i in (0..self.locals.len()).rev() {
-            if let Some(l) = self.locals.get(i as usize) {
-                if let Some(l) = l {
-                    if l.name == name && l.initialized {//&& l.depth != 0 {
-                        return i;
-                    }
-                }
-            }
+        // check if variable is a local
+        for l in self.locals.iter().rev().flatten() {
+            if l.name == name { return l.index.unwrap() }
         }
-        0
+
+        usize::MAX
     }
 
     /// Initialize the most recently added local variable.
@@ -321,7 +334,7 @@ fn variable<'source, 'chunk>(
         let prev_word = <&str>::clone(&prev.slice);
 
         let idx = current.resolve_local(prev_word); // TODO: how to get name?
-        if idx != 0 {
+        if idx != usize::MAX {
             (OpCode::OP_GET_LOCAL(idx), OpCode::OP_SET_LOCAL(idx))
         } else {
             let idx = parser.identifier_constant_prev();
@@ -678,20 +691,19 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                 // Remove the local that is overshaddowed (it will never be refenced again),
                 // and add the new one at the end of the scope.
                 if prev_name == l.name {
-                    to_remove = Some(current.locals.len() - i); // The list is reversed, so the index is based on the
-                                                                // len of the array.
+                    to_remove = Some(current.locals.len() - i - 1);
                     break;
                 }
             }
         }
 
         // Revome the variable if it is no longer needed
-        if let Some(rmv) = to_remove {
-            current.locals.remove(rmv);
+        if let Some(i) = to_remove {
+            current.locals.remove(i);
         }
 
         // Add local variable to the list of local variables.
-        current.add_local(prev_name);
+        current.add_local(prev_name, self.compiling_chunk.constants.len());
     }
 
     fn end_compiler(&mut self) {

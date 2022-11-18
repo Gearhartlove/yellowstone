@@ -18,7 +18,7 @@ fn simple_instruction(name: &str, offset: &mut u32) {
 
 fn constant_instruction(instruction: &OpCode, offset: &mut u32) {
     if let OP_CONSTANT(const_val) = instruction {
-        println!("OP_CONSTANT {:?}", const_val);
+        println!("{}", format_args!("OP_CONSTANT {:?}", const_val));
         *offset += 1;
     } else {
         panic!(
@@ -32,7 +32,7 @@ fn global_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
     match instruction {
         OP_SET_GLOBAL(index) => {
             println!(
-                "OP_SET_GLOBAL | {:?} {:?}",
+                "OP_SET_GLOBAL {:?} {:?}",
                 chunk.get_constant_name(index),
                 chunk.constants.get(*index).unwrap()
             )
@@ -57,15 +57,27 @@ fn global_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
 
 /// The slot number of the local variable. b/c the local variable's name never leaves the
 /// compiler to make it into the chunk at all.
-fn local_instruction(name: &'static str, offset: &mut u32, chunk: &Chunk) {
-    println!("{} {}", name, offset); // TODO: is this the right thing to print?
-    *offset += 1 
+fn local_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
+    match instruction {
+        OP_SET_LOCAL(i) => {
+            println!("OP_SET_LOCAL {:?} {:?}", chunk.get_constant_name(i), chunk.constants.get(*i).unwrap())
+        },
+        OP_GET_LOCAL(i) => {
+            println!("OP_GET_LOCAL {:?}", chunk.constants.get(*i).unwrap())
+        },
+        _ => {
+            panic!(
+                "The instruction at offset {} is not a local instruction.",
+                offset
+            )
+        }
+    }
 }
 
 fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &String, chunk: &Chunk) {
     print!("{:04}", offset);
-    let line = get_line(offset, &lines);
-    if line == "same".to_string() {
+    let line = get_line(offset, lines);
+    if line == *"same" {
         print!("   | ");
     } else {
         print!("{:>4} ", line);
@@ -76,8 +88,8 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
         OP_DEFINE_GLOBAL(_) => global_instruction(instruction, offset, chunk),
         OP_GET_GLOBAL(_) => global_instruction(instruction, offset, chunk),
         OP_SET_GLOBAL(_) => global_instruction(instruction, offset, chunk),
-        OP_SET_LOCAL(_) => local_instruction("OP_SET_LOCAL", offset, chunk),
-        OP_GET_LOCAL(_) => local_instruction("OP_GET_LOCAL", offset, chunk),
+        OP_SET_LOCAL(_) => local_instruction(instruction, offset, chunk),
+        OP_GET_LOCAL(_) => local_instruction(instruction, offset, chunk),
         OP_TRUE => simple_instruction("OP_TRUE", offset),
         OP_NIL => simple_instruction("OP_NIL", offset),
         OP_FALSE => simple_instruction("OP_FALSE", offset),
