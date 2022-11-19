@@ -1,5 +1,5 @@
 use crate::error::InterpretError;
-use std::fmt::{Debug, Formatter, Display};
+use std::fmt::{Debug, Display, Formatter};
 use std::mem::ManuallyDrop;
 use std::rc::Rc;
 
@@ -7,6 +7,8 @@ use std::rc::Rc;
 pub struct Value {
     pub kind: ValueKind,
     u: ValueUnion,
+    /// if once is true, this Value can only be assigned once.
+    pub once: bool,
 }
 
 #[repr(C)]
@@ -17,12 +19,6 @@ pub union ValueUnion {
 }
 
 type YSObject = ManuallyDrop<Rc<dyn ObjectHandler>>;
-
-// impl Display for YSObject {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         write!("testtesttest")
-//     }
-// }
 
 #[repr(u32)]
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -54,17 +50,20 @@ impl Clone for Value {
                 Value {
                     kind: ValueKind::ValBool,
                     u: ValueUnion { b },
+                    once: false,
                 }
             }
             ValueKind::ValNil => Value {
                 kind: ValueKind::ValNil,
                 u: ValueUnion { f: 0. },
+                once: false,
             },
             ValueKind::ValNumber => {
                 let f = self.as_number().unwrap();
                 Value {
                     kind: ValueKind::ValNumber,
                     u: ValueUnion { f },
+                    once: false,
                 }
             }
             ValueKind::ValObj => {
@@ -74,6 +73,7 @@ impl Clone for Value {
                     u: ValueUnion {
                         o: ManuallyDrop::new(o),
                     },
+                    once: false,
                 }
             }
         }
@@ -162,18 +162,22 @@ impl Debug for Value {
                 Value {
                     kind: ValueKind::ValBool,
                     u: ValueUnion { b },
+                    once,
                 } => write!(fmtr, "{}", b),
                 Value {
                     kind: ValueKind::ValNil,
                     u: ValueUnion { f },
-                } => write!(fmtr, "{}", f), 
+                    once,
+                } => write!(fmtr, "{}", f),
                 Value {
                     kind: ValueKind::ValNumber,
-                    u: ValueUnion { f},
+                    u: ValueUnion { f },
+                    once,
                 } => write!(fmtr, "{}", f),
                 Value {
                     kind: ValueKind::ValObj,
                     u: ValueUnion { o },
+                    once,
                 } => write!(fmtr, "{}", o.to_string()),
             }
         }
@@ -222,6 +226,7 @@ impl Value {
         Self {
             kind: ValueKind::ValBool,
             u: ValueUnion { b },
+            once: false,
         }
     }
 
@@ -229,6 +234,7 @@ impl Value {
         Self {
             kind: ValueKind::ValNil,
             u: ValueUnion { f: 0. },
+            once: false,
         }
     }
 
@@ -236,6 +242,7 @@ impl Value {
         Self {
             kind: ValueKind::ValNumber,
             u: ValueUnion { f: num },
+            once: false,
         }
     }
 
@@ -245,6 +252,7 @@ impl Value {
             u: ValueUnion {
                 o: ManuallyDrop::new(Rc::clone(&o)),
             },
+            once: false,
         }
     }
 
@@ -296,38 +304,50 @@ impl Value {
     pub fn is_bool(&self) -> bool {
         unsafe {
             matches!(
-                self, Value {
+                self,
+                Value {
                     kind: ValueKind::ValBool,
                     u: ValueUnion { b: _b },
-                })
+                    once
+                }
+            )
         }
     }
 
     pub fn is_nil(&self) -> bool {
         matches!(
-            self, Value {
+            self,
+            Value {
                 kind: ValueKind::ValNil,
                 u: ValueUnion { f: _ },
-            })
+                once
+            }
+        )
     }
 
     pub fn is_number(&self) -> bool {
         unsafe {
             matches!(
-                self, Value {
+                self,
+                Value {
                     kind: ValueKind::ValNumber,
                     u: ValueUnion { f: _f },
-                })
+                    once
+                }
+            )
         }
     }
 
     pub fn is_obj(&self) -> bool {
         unsafe {
             matches!(
-                self, Value {
+                self,
+                Value {
                     kind: ValueKind::ValObj,
                     u: ValueUnion { o: _o },
-                })
+                    once
+                }
+            )
         }
     }
 

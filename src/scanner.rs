@@ -1,4 +1,5 @@
 // Design Decision: Scan token only when the compiler needs a token
+// Note for adding syntax : Token -> Parse -> Runtime ; Error; 
 
 use crate::scanner::TokenKind::*;
 use crate::util::*;
@@ -33,6 +34,7 @@ pub enum TokenKind {
     TOKEN_STRING,
     TOKEN_NUMBER,
     // Keywords.
+    TOKEN_ONCE,
     TOKEN_ASSERT_EQ,
     TOKEN_AND,
     TOKEN_CLASS,
@@ -343,7 +345,15 @@ impl<'source> Scanner<'source> {
             }
             "i" => return self.check_keyword(1, 1, "f", TOKEN_IF),
             "n" => return self.check_keyword(1, 2, "il", TOKEN_NIL),
-            "o" => return self.check_keyword(1, 1, "r", TOKEN_OR),
+            "o" => {
+                if self.current - self.start > 1 {
+                    match self.start_next() {
+                        "r" => return self.check_keyword(0, 0, "r", TOKEN_OR),
+                        "n" => return self.check_keyword(1, 2, "ce", TOKEN_ONCE),
+                        _ => {}
+                    }
+                }
+            },
             "p" => return self.check_keyword(1, 4, "rint", TOKEN_PRINT),
             "r" => return self.check_keyword(1, 5, "eturn", TOKEN_RETURN),
             "s" => return self.check_keyword(1, 4, "uper", TOKEN_SUPER),

@@ -5,7 +5,7 @@ use crate::error::InterpretError;
 use crate::scanner::TokenKind::*;
 use crate::scanner::{Scanner, Token, TokenKind};
 use crate::value::{allocate_object, Value};
-use anyhow::{Result};
+use anyhow::Result;
 
 const DEBUG_PRINT_CODE: bool = false;
 
@@ -116,7 +116,7 @@ struct Compiler<'source> {
 }
 
 impl<'source> Compiler<'source> {
-    const MAX_LOCALS: usize = 256;
+    const MAX_LOCALS: usize = 512;
 
     /// Instantiate a new compiler for local variables. Push a None onto the array b/c
     /// that slot will be used to determine if their are no local variables in scope.
@@ -150,7 +150,7 @@ impl<'source> Compiler<'source> {
                     parser.emit_byte(OpCode::OP_POP);
                     pop_count += 1;
                 } else {
-                    break
+                    break;
                 }
             }
         }
@@ -173,25 +173,12 @@ impl<'source> Compiler<'source> {
         }
     }
 
-    /// Walk the list of locals that are currently in scope. If one has the same name as the
-    /// identifier token, the identifier must refer to that variable.
-    // fn resolve_local(&mut self, name: &'source str) -> usize {
-    //     for i in (0..self.locals.len()).rev() {
-    //         if let Some(l) = self.locals.get(i as usize) {
-    //             if let Some(l) = l {
-    //                 if l.name == name && l.initialized {//&& l.depth != 0 {
-    //                     return i;
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     0
-    // }
-
     fn resolve_local(&mut self, name: &'source str) -> usize {
         // check if variable is a local
         for l in self.locals.iter().rev().flatten() {
-            if l.name == name { return l.index.unwrap() }
+            if l.name == name && l.initialized {
+                return l.index.unwrap();
+            }
         }
 
         usize::MAX
@@ -278,7 +265,7 @@ fn binary<'source, 'chunk>(
 
     match operator_type {
         TokenKind::TOKEN_BANG_EQUAL => parser.emit_bytes(OpCode::OP_EQUAL, OpCode::OP_NOT),
-        TokenKind::TOKEN_EQUAL_EQUAL => parser.emit_byte(OpCode::OP_EQUAL),
+        TokenKind::TOKEN_EQUAL_EQUAL => parser.emit_byte(OpCode::OP_EQUAL), // TODO: bug; where is the singular EQUAL operator?
         TokenKind::TOKEN_GREATER => parser.emit_byte(OpCode::OP_GREATER),
         TokenKind::TOKEN_GREATER_EQUAL => parser.emit_bytes(OpCode::OP_LESS, OpCode::OP_NOT),
         TokenKind::TOKEN_LESS => parser.emit_byte(OpCode::OP_LESS),
@@ -334,29 +321,33 @@ fn unary<'source, 'chunk>(
 fn variable<'source, 'chunk>(
     parser: &mut Parser<'source, 'chunk>,
     scanner: &mut Scanner<'source>,
-    current: &mut Compiler<'source>, // TODO: update every rule to add the compiler to it
+    current: &mut Compiler<'source>,
     can_assign: bool,
 ) {
-    let (get_op, set_op) = {
+    let (get_op, set_op, idx) = {
         let prev = parser.previous.as_ref().unwrap();
         let prev_word = <&str>::clone(&prev.slice);
 
-        let idx = current.resolve_local(prev_word); // TODO: how to get name?
+        let idx = current.resolve_local(prev_word);
         if idx != usize::MAX {
-            (OpCode::OP_GET_LOCAL(idx), OpCode::OP_SET_LOCAL(idx))
+            (OpCode::OP_GET_LOCAL(idx), OpCode::OP_SET_LOCAL(idx), idx)
         } else {
             let idx = parser.identifier_constant_prev();
-            (OpCode::OP_GET_GLOBAL(idx), OpCode::OP_SET_GLOBAL(idx))
+            (OpCode::OP_GET_GLOBAL(idx), OpCode::OP_SET_GLOBAL(idx), idx)
         }
     };
 
-    // TODO: do I need this?
-    // let index = parser.identifier_constant_prev();
-
     // Set variable
     if can_assign && parser.match_token(TOKEN_EQUAL, scanner) {
-        parser.expression(scanner, current);
-        parser.emit_byte(set_op);
+        // Check if the variable is immutable
+        if parser.compiling_chunk.constants.get(idx).unwrap().once {
+            parser.expression(scanner, current);
+            parser.emit_byte(set_op);
+        } else {
+            eprint!("Cannot assign once variable twice.");
+            parser.error_at(ErrorAt::Current);
+            parser.had_error = true;
+        }
     }
     // Get variable
     else {
@@ -509,13 +500,12 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         current: &mut Compiler<'source>,
     ) {
         self.expression(scanner, current);
-        //self.consume(TOKEN_SEMICOLON, "Expect ';' after expression.", scanner);
-        //self.emit_byte(OpCode::OP_POP);
     }
 
     fn declaration(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
+        let once = self.match_token(TOKEN_ONCE, scanner);
         if self.match_token(TOKEN_VAR, scanner) {
-            self.var_declaration(scanner, current);
+            self.var_declaration(scanner, current, once);
         } else {
             self.statement(scanner, current);
         }
@@ -955,6 +945,11 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
         },
         // statement not an expression
         TOKEN_ASSERT_EQ => ParseRule {
+            prefix: None,
+            infix: None,
+            precedence: Precedence::PREC_NONE,
+        },
+        TOKEN_ONCE => ParseRule {
             prefix: None,
             infix: None,
             precedence: Precedence::PREC_NONE,

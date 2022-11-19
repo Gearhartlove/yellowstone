@@ -352,6 +352,16 @@ fn variable_local_global_shadowing_test() {
     }
 }
 
+#[test]
+fn once_test() {
+    let mut vm = VM::default();
+    let source = "
+    once foo = \"first\";
+    foo = \"twice\";
+    ";
+    run_code_expect_error(&mut vm, source, RUNTIME_ASSIGN_ONCE_TWICE_ERROR);
+}
+
 // ################################################################################
 // Helper Functions
 // ################################################################################
