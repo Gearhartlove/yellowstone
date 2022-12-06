@@ -101,7 +101,7 @@ impl PartialEq<f32> for Value {
         let conv = match self.kind {
             ValueKind::ValNil => self.as_nil().unwrap(),
             ValueKind::ValNumber => self.as_number().unwrap(),
-            _ => (return false),
+            _ => return false,
         };
         conv == *other
     }
@@ -162,15 +162,15 @@ impl Debug for Value {
                 Value {
                     kind: ValueKind::ValBool,
                     u: ValueUnion { b },
-                } => write!(fmtr, "{}", b),
+                } => write!(fmtr, "{b}"),
                 Value {
                     kind: ValueKind::ValNil,
                     u: ValueUnion { f },
-                } => write!(fmtr, "{}", f), 
+                } => write!(fmtr, "{f}"), 
                 Value {
                     kind: ValueKind::ValNumber,
                     u: ValueUnion { f},
-                } => write!(fmtr, "{}", f),
+                } => write!(fmtr, "{f}"),
                 Value {
                     kind: ValueKind::ValObj,
                     u: ValueUnion { o },
@@ -353,14 +353,14 @@ where
     let rc = Rc::new(data);
     let obj = Value::obj_value(rc);
 
-    return obj;
+    obj
 }
 
 pub trait ObjectHandler: std::fmt::Debug {
     fn kind(self: Rc<Self>) -> ObjKind;
 
     fn to_string(&self) -> String {
-        format!("{:?}", self)
+        format!("{self:?}")
     }
 }
 

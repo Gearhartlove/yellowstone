@@ -75,7 +75,7 @@ fn compiler_asserteq_bool_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -93,7 +93,7 @@ fn compiler_asserteq_num_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -104,7 +104,7 @@ fn compiler_asserteq_nil_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -115,7 +115,7 @@ fn compiler_asserteq_string_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -126,7 +126,7 @@ fn global_var_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -147,7 +147,7 @@ fn global_var_declaration() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -161,7 +161,7 @@ fn mutate_global_vars_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -176,7 +176,7 @@ fn local_var_declaration_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -192,7 +192,7 @@ fn get_var_declaration_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -209,7 +209,7 @@ fn get_local_and_global_vars_test() {
         }
     ";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{:?}", result); assert!(false) }
+    if result.is_err() { eprintln!("{:?}", result); panic!() }
 }
 
 #[test]
@@ -226,7 +226,7 @@ fn global_local_interaction_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -244,7 +244,7 @@ fn global_local_nums_interaction_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -265,7 +265,7 @@ fn multiple_blocks_global_interaction_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -286,7 +286,7 @@ fn multiple_blocks_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -330,7 +330,7 @@ fn variable_local_shadowing_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -347,8 +347,8 @@ fn variable_local_global_shadowing_test() {
     ";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
-        assert!(false)
+        eprintln!("{result:?}");
+        panic!()
     }
 }
 
@@ -359,7 +359,7 @@ fn if_true_test() {
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);
-        assert!(false)
+        panic!()
     }
 }
 
@@ -380,7 +380,7 @@ pub fn run_code_expect_value<T: ToString + Display>(vm: &mut VM, source: T, expe
         Ok(v) => {
             assert_eq!(expect, v);
         },
-        _ => { eprintln!("error returned when value expected"); assert!(false) }
+        _ => { eprintln!("error returned when value expected"); panic!() }
     }
 }
 
@@ -389,9 +389,9 @@ pub fn run_code_expect_error<T: ToString + Display>(vm: &mut VM, source: T, expe
     match result {
         Err(e) => {
             let root = e.root_cause();
-            assert_eq!(format!("{}", root), expect.to_string());
+            assert_eq!(format!("{root}"), expect.to_string());
         },
-        _ => { eprintln!("value returned when error expected"); assert!(false) }
+        _ => { eprintln!("value returned when error expected"); panic!() }
     }
 }
 
@@ -402,7 +402,7 @@ pub fn num_val(vm: &mut VM, variable_name: &'static str) -> Option<f32> {
             _ => None,
         }
     } else {
-        return None;
+        None
     }
 }
 
@@ -413,7 +413,7 @@ pub fn nil_val(vm: &mut VM, variable_name: &'static str) -> Option<f32> {
             _ => None,
         }
     } else {
-        return None;
+        None
     }
 }
 
@@ -424,7 +424,7 @@ pub fn bool_val(vm: &mut VM, variable_name: &'static str) -> Option<bool> {
             _ => None,
         }
     } else {
-        return None;
+       None
     }
 }
 
@@ -435,13 +435,10 @@ pub fn str_val(vm: &mut VM, variable_name: &'static str) -> Option<String> {
             _ => None,
         }
     } else {
-        return None;
+        None
     }
 }
 
 pub fn get_constant_name(vm: &VM, i: usize) -> Option<String> {
-    return match vm.chunk.constants.get(i) {
-        Some(c) => Some(c.as_string().unwrap()),
-        None => None,
-    };
+    return vm.chunk.constants.get(i).map(|c| c.as_string().unwrap());
 }
