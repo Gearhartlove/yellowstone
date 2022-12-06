@@ -355,7 +355,7 @@ fn variable_local_global_shadowing_test() {
 #[test]
 fn if_true_test() {
     let mut vm = VM::default();
-    let source = String::from("var condition = true; if (condition) { print \"first\"; } print \"second\";");
+    let source = String::from("var condition = false; if (condition) { print \"hello\"; print \"world\"; } print \"second\";");
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{:?}", result);

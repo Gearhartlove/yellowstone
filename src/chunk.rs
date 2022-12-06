@@ -29,6 +29,7 @@ pub enum OpCode {
     OP_ASSERT_EQ,
     // jumping
     OP_JUMP_IF_FALSE, 
+    OP_JUMP,
     OP_PLACEHOLDER_JUMP_AMOUNT,
     OP_JUMP_AMOUNT(usize),
 }

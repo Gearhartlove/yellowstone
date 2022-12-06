@@ -521,9 +521,20 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition", scanner);
 
         let then_jump: usize = self.emit_jump_if_false();
+        self.emit_byte(OpCode::OP_POP);
+
         self.statement(scanner, current);
 
+        let else_jump: usize = self.emit_jump();
+        self.emit_byte(OpCode::OP_POP);
+
         self.patch_jump(then_jump);
+
+        if self.match_token(TOKEN_ELSE, scanner) {
+            self.statement(scanner, current)
+        }
+
+        self.patch_jump(else_jump);
     }
 
     fn declaration(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
@@ -779,8 +790,10 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.compiling_chunk.code.len() - 1 
     }
 
-    fn emit_jump(&mut self, opcode: OpCode) {
-        self.emit_byte(opcode);
+    fn emit_jump(&mut self) -> usize {
+        self.emit_byte(OpCode::OP_JUMP);
+        self.emit_byte(OpCode::OP_PLACEHOLDER_JUMP_AMOUNT);
+        self.compiling_chunk.code.len() - 1
     }
 }
 

@@ -33,16 +33,19 @@ fn global_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
                 "OP_SET_GLOBAL {:?} {:?}",
                 chunk.get_constant_name(index),
                 chunk.constants.get(*index).unwrap()
-            )
+            );
+            *offset += 1;
         }
         OP_GET_GLOBAL(index) => {
-            println!("OP_GET_GLOBAL {:?}", chunk.constants.get(*index).unwrap())
+            println!("OP_GET_GLOBAL {:?}", chunk.constants.get(*index).unwrap());
+            *offset += 1;
         }
         OP_DEFINE_GLOBAL(index) => {
             println!(
                 "OP_DEFINE_GLOBAL {:?}",
                 chunk.constants.get(*index).unwrap()
-            )
+            );
+            *offset += 1;
         }
         _ => {
             panic!("The instruction at offset {offset} is not a constant instruction.");
@@ -55,10 +58,12 @@ fn global_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
 fn local_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
     match instruction {
         OP_SET_LOCAL(i) => {
-            println!("OP_SET_LOCAL {:?} {:?}", chunk.get_constant_name(i), chunk.constants.get(*i).unwrap())
+            println!("OP_SET_LOCAL {:?} {:?}", chunk.get_constant_name(i), chunk.constants.get(*i).unwrap());
+            *offset += 1;
         },
         OP_GET_LOCAL(i) => {
-            println!("OP_GET_LOCAL {:?}", chunk.constants.get(*i).unwrap())
+            println!("OP_GET_LOCAL {:?}", chunk.constants.get(*i).unwrap());
+            *offset += 1;
         },
         _ => {
             panic!(
@@ -68,8 +73,11 @@ fn local_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
     }
 }
 
-fn jump_amount_instruction(jump_amount: &usize) {
-    println!("OP_JUMP_AMOUNT {jump_amount}")
+fn jump_instruction(name: &str, sign: u32, chunk: &Chunk, offset: &mut u32) {
+    if let OP_JUMP_AMOUNT(jump) = chunk.code.get((*offset + 1) as usize).unwrap() {
+        println!("{name} {offset} {}", (*offset + 2 + sign * (*jump as u32)));
+    }
+    *offset += 1;
 }
 
 fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &String, chunk: &Chunk) {
@@ -108,8 +116,9 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
             todo!()
         }
         // jump 
-        OP_JUMP_IF_FALSE => simple_instruction("OP_JUMP_IF_FALSE", offset),
+        OP_JUMP_IF_FALSE => jump_instruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
+        OP_JUMP => jump_instruction("OP_JUMP", 1, chunk, offset),
         OP_PLACEHOLDER_JUMP_AMOUNT => simple_instruction("OP_PLACEHOLDER_JUMP_AMOUNT", offset),
-        OP_JUMP_AMOUNT(jump_amount) => jump_amount_instruction(jump_amount),
+        OP_JUMP_AMOUNT(_) => simple_instruction("", offset),
     }
 }
