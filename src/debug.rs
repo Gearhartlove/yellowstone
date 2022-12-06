@@ -3,7 +3,7 @@ use crate::chunk::OpCode::*;
 use crate::chunk::*;
 
 pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
-    println!("== {} ==", name);
+    println!("== {name} ==");
 
     let mut offset: u32 = 0;
     for instruction in chunk.code.iter() {
@@ -18,13 +18,11 @@ fn simple_instruction(name: &str, offset: &mut u32) {
 
 fn constant_instruction(instruction: &OpCode, offset: &mut u32) {
     if let OP_CONSTANT(const_val) = instruction {
-        println!("{}", format_args!("OP_CONSTANT {:?}", const_val));
+        println!("{}", format_args!("OP_CONSTANT {const_val:?}"));
         *offset += 1;
     } else {
         panic!(
-            "The instruction at offset {} is not a constant instruction.",
-            offset
-        );
+            "The instruction at offset {offset} is not a constant instruction.");
     }
 }
 
@@ -47,10 +45,7 @@ fn global_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
             )
         }
         _ => {
-            panic!(
-                "The instruction at offset {} is not a constant instruction.",
-                offset
-            );
+            panic!("The instruction at offset {offset} is not a constant instruction.");
         }
     }
 }
@@ -67,20 +62,23 @@ fn local_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
         },
         _ => {
             panic!(
-                "The instruction at offset {} is not a local instruction.",
-                offset
+                "The instruction at offset {offset} is not a local instruction."
             )
         }
     }
 }
 
+fn jump_amount_instruction(jump_amount: &usize) {
+    println!("OP_JUMP_AMOUNT {jump_amount}")
+}
+
 fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &String, chunk: &Chunk) {
-    print!("{:04}", offset);
+    print!("{offset:04}");
     let line = get_line(offset, lines);
     if line == *"same" {
         print!("   | ");
     } else {
-        print!("{:>4} ", line);
+        print!("{line:>4} ");
     }
 
     match instruction {
@@ -109,5 +107,9 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
         OP_DEBUG => {
             todo!()
         }
+        // jump 
+        OP_JUMP_IF_FALSE => simple_instruction("OP_JUMP_IF_FALSE", offset),
+        OP_PLACEHOLDER_JUMP_AMOUNT => simple_instruction("OP_PLACEHOLDER_JUMP_AMOUNT", offset),
+        OP_JUMP_AMOUNT(jump_amount) => jump_amount_instruction(jump_amount),
     }
 }

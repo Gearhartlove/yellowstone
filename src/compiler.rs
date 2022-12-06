@@ -509,8 +509,21 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         current: &mut Compiler<'source>,
     ) {
         self.expression(scanner, current);
-        //self.consume(TOKEN_SEMICOLON, "Expect ';' after expression.", scanner);
-        //self.emit_byte(OpCode::OP_POP);
+    }
+
+    fn if_statement(
+        &mut self,
+        scanner: &mut Scanner<'source>,
+        current: &mut Compiler<'source>,
+    ) {
+        self.consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.", scanner);
+        self.expression(scanner, current);
+        self.consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition", scanner);
+
+        let then_jump: usize = self.emit_jump_if_false();
+        self.statement(scanner, current);
+
+        self.patch_jump(then_jump);
     }
 
     fn declaration(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
@@ -593,14 +606,16 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                 TOKEN_PRINT => {
                     self.print_statement(scanner, current);
                 }
+                TOKEN_IF => {
+                    self.advance(scanner);
+                    self.if_statement(scanner, current);
+                }
                 TOKEN_ASSERT_EQ => {
                     self.advance(scanner);
-
                     self.assert_eq_statement(scanner, current);
                 }
                 TOKEN_LEFT_BRACE => {
                     self.advance(scanner);
-
                     current.begin_scope();
                     self.block(scanner, current);
                     current.end_scope(self);
@@ -736,6 +751,18 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.emit_byte(OpCode::OP_CONSTANT(value))
     }
 
+    /// Goes back into the bytecode and replaces the operand at the given 
+    /// location with the calculated jump offset. 
+    fn patch_jump(&mut self, offset: usize) {
+        let jump = self.compiling_chunk.code.len() - offset - 1; // OBO?
+
+        // Replace placeholder jump with OP_JUMP
+        // where to remove?
+        let placeholder = self.compiling_chunk.code.remove(offset);
+        assert_eq!(OpCode::OP_PLACEHOLDER_JUMP_AMOUNT, placeholder);
+        self.compiling_chunk.code.insert(offset, OpCode::OP_JUMP_AMOUNT(jump));
+    }
+
     fn emit_byte(&mut self, opcode: OpCode) {
         let line = self.previous.as_ref().unwrap().line as usize;
         self.compiling_chunk.write_chunk(opcode, line);
@@ -744,6 +771,16 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
     fn emit_bytes(&mut self, opcode1: OpCode, opcode2: OpCode) {
         self.emit_byte(opcode1);
         self.emit_byte(opcode2);
+    }
+
+    fn emit_jump_if_false(&mut self) -> usize {
+        self.emit_byte(OpCode::OP_JUMP_IF_FALSE);
+        self.emit_byte(OpCode::OP_PLACEHOLDER_JUMP_AMOUNT);
+        self.compiling_chunk.code.len() - 1 
+    }
+
+    fn emit_jump(&mut self, opcode: OpCode) {
+        self.emit_byte(opcode);
     }
 }
 

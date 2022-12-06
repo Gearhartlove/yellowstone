@@ -79,8 +79,8 @@ impl VM {
     }
 
     // nil and false are falsey and every other value behaves like true
-    fn is_falsey(value: Value) -> bool {
-        Value::is_nil(&value) || (Value::is_bool(&value) && !Value::as_bool(&value).unwrap())
+    fn is_falsey(value: &Value) -> bool {
+        Value::is_nil(value) || (Value::is_bool(value) && !Value::as_bool(value).unwrap())
     }
 
     /// Pops the top two values off of the stack, joins them together, and then pushes the
@@ -89,7 +89,7 @@ impl VM {
         let b = Value::as_string(&self.pop()).unwrap();
         let a = Value::as_string(&self.pop()).unwrap();
 
-        let cat = format!("{}{}", a, b).replace("\"", "");
+        let cat = format!("{a}{b}").replace('\"', "");
         let obj = allocate_object(cat);
 
         self.track_object(&obj);
@@ -101,7 +101,7 @@ impl VM {
         // if debug flag enabled, print each instruction before execution
         if VM::DEBUG_EXECUTION_TRACING {
             for val in self.stack.iter() {
-                println!("[{:?}]", val);
+                println!("[{val:?}]");
             }
             disassemble_chunk(&self.chunk, "chunk");
             println!();
@@ -113,7 +113,7 @@ impl VM {
                 OP_RETURN => {
                     //changed in the global variable chapter
                     return if let Some(v) = self.stack.pop() {
-                        println!("chunk result: {:?}", v);
+                        println!("chunk result: {v:?}");
                         Ok(Some(v))
                     } else {
                         //println!("Stack is empty, nothing to pop");
@@ -140,7 +140,7 @@ impl VM {
                         return Err(RUNTIME_ERROR).context("Operand cannot be a number");
                     }
                     let val = self.pop();
-                    self.push(Value::bool_val(VM::is_falsey(val)));
+                    self.push(Value::bool_val(VM::is_falsey(&val)));
                     Ok(())
                 }
                 OP_NIL => {
@@ -177,14 +177,14 @@ impl VM {
                             self.push(stack_value);
                             Ok(())
                         }
-                        None => Err(RUNTIME_UNRECOGNIZED_VARIABLE_ERROR).context(format!("undefined variable: {}", key)),
+                        None => Err(RUNTIME_UNRECOGNIZED_VARIABLE_ERROR).context(format!("undefined variable: {key}")),
                     }
                 }
                 OP_SET_GLOBAL(index) => {
                     let key = self.chunk.get_constant_name(&index).unwrap();
                     let table_value = self.table.get(key.as_str());
                     match table_value {
-                        None => Err(RUNTIME_ERROR).context(format!("undefined variable: {}", key)),
+                        None => Err(RUNTIME_ERROR).context(format!("undefined variable: {key}")),
                         _ => {
                             let updated_value = self.peek(0).unwrap().clone();
                             self.table.delete(key.as_str());
@@ -258,9 +258,8 @@ impl VM {
                         if !result {
                             Err(RUNTIME_ASSERT_ERROR).context(format!(
                                 "Failed because assert values are not equal.
-                                left:  {:?} \n 
-                                right: {:?}",
-                                b, a
+                                left:  {b:?} \n 
+                                right: {a:?}"
                             ))
                         } else {
                             self.push(Value::bool_val(true));
@@ -285,11 +284,19 @@ impl VM {
                     }
                     Ok(())
                 }
+                OP_JUMP_IF_FALSE => {
+                    if let OP_JUMP_AMOUNT(amount) = self.read_byte() {
+                        if VM::is_falsey(self.peek(0).unwrap()) {
+                            self.ip += amount;
+                        }
+                    }
+                    Ok(())
+                }
+                OP_PLACEHOLDER_JUMP_AMOUNT => panic!("Placeholder Jump encountered."),
+                OP_JUMP_AMOUNT(_) => todo!(),
             };
 
-            if let Err(e) = result {
-                return Err(e);
-            }
+            result?
         }
     }
 
@@ -319,7 +326,7 @@ fn binary_operator(vm: &mut VM, op: char) -> Result<()> {
         '>' => vm.stack.push(Value::bool_val(a > b)),
         '<' => vm.stack.push(Value::bool_val(a < b)),
         _ => {
-            println!("invalid operation {}", op)
+            println!("invalid operation {op}")
         }
     }
     Ok(())

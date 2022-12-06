@@ -2,7 +2,7 @@ use crate::value::Value;
 
 /// Yellowstone VM byte-code instructions.
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum OpCode {
     OP_CONSTANT(Value),
     OP_NIL,
@@ -27,6 +27,10 @@ pub enum OpCode {
     OP_GET_GLOBAL(usize),
     OP_SET_GLOBAL(usize),
     OP_ASSERT_EQ,
+    // jumping
+    OP_JUMP_IF_FALSE, 
+    OP_PLACEHOLDER_JUMP_AMOUNT,
+    OP_JUMP_AMOUNT(usize),
 }
 
 /// Contains the bytecode instructions as well as constants created from parsing tokens.
@@ -159,10 +163,6 @@ mod chunk_tests {
     use crate::chunk::*;
 
     fn write_chunk(chunk: &mut Chunk, instruction: OpCode, line: usize) {
-        if line <= 0 {
-            panic!("Line cannot be smaller than 1")
-        }
-
         chunk.write_chunk(instruction, line)
     }
 

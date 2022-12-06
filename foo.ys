@@ -1,8 +1,4 @@
-{
-    var foo = "foo";
-    {
-        var bar = "bar;
-        
-        print foo + bar;
-    }
-}
+var condition = true;
+
+if (condition) print "condition was truthy";
+print "after condition";

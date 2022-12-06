@@ -383,3 +383,15 @@ fn tokenizer_assert_test() {
     let source = String::from("assert_eq(true, true)");
     assert_tokens_are!(source, TOKEN_ASSERT_EQ, TOKEN_LEFT_PAREN, TOKEN_TRUE, TOKEN_COMMA, TOKEN_TRUE, TOKEN_RIGHT_PAREN, TOKEN_EOF);
 }
+
+#[test]
+fn if_single_expression_test() {
+    let source = String::from("if (condition) { print \"hello\"; }");
+    assert_tokens_are!(source, TOKEN_IF, TOKEN_LEFT_PAREN, TOKEN_IDENTIFIER, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE, TOKEN_PRINT, TOKEN_STRING, TOKEN_SEMICOLON, TOKEN_RIGHT_BRACE)
+}
+
+#[test]
+fn if_statements_test() {
+    let source = String::from("if (condition) { print \"hello\"; print \"world\"; }");
+    assert_tokens_are!(source, TOKEN_IF, TOKEN_LEFT_PAREN, TOKEN_IDENTIFIER, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE, TOKEN_PRINT, TOKEN_STRING, TOKEN_SEMICOLON, TOKEN_PRINT, TOKEN_STRING, TOKEN_SEMICOLON, TOKEN_RIGHT_BRACE)
+}
