@@ -329,7 +329,7 @@ fn variable_local_shadowing_test() {
     ";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -355,16 +355,53 @@ fn variable_local_global_shadowing_test() {
 #[test]
 fn if_true_test() {
     let mut vm = VM::default();
-    let source = String::from("var condition = false; if (condition) { print \"hello\"; print \"world\"; } print \"second\";");
+    let source = String::from("
+        var num = 1; 
+        if (true) { 
+            num = 2 
+        } 
+        assert_eq(2, num);");
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
 
 #[test]
-fn if_false_test() {}
+fn if_false_test() {
+    let mut vm = VM::default();
+    let source = String::from("
+        var num = 1; 
+        if (false) { 
+            num = 2 
+        } 
+        assert_eq(1, num);");
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{result:?}");
+        panic!()
+    }
+}
+
+#[test]
+fn else_test() {
+    let mut vm = VM::default();
+    let source = String::from("
+        var num = 1; 
+        if (false) {  
+            num = 2; 
+        } else {
+            assert_eq(1, num);
+            num = 3
+        }
+        assert_eq(3, num);");
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{result:?}");
+        panic!()
+    }
+}
 
 // ################################################################################
 // Helper Functions
