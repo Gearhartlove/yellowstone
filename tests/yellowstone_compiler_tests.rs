@@ -1,6 +1,6 @@
 extern crate core;
 
-use anyhow::{Result, Context};
+use anyhow::{Result};
 use std::fmt::Display;
 use yellowstone::value::{Value, ValueKind};
 use yellowstone::vm::VM;
@@ -74,7 +74,7 @@ fn compiler_asserteq_bool_test() {
     let source = "var foo = true; assert_eq(foo, true);";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -92,7 +92,7 @@ fn compiler_asserteq_num_test() {
     let source = "var foo = 42; assert_eq(foo, 42);";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -103,7 +103,7 @@ fn compiler_asserteq_nil_test() {
     let source = "var foo = nil; assert_eq(foo, nil);";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -114,7 +114,7 @@ fn compiler_asserteq_string_test() {
     let source = "var foo = \"foo\"; assert_eq(foo, \"foo\");";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -125,7 +125,7 @@ fn compiler_global_var_test() {
     let source = "var lang = \"yellowstone\";";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -146,7 +146,7 @@ fn compiler_global_var_declaration() {
     ";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -160,7 +160,7 @@ fn compiler_mutate_global_vars_test() {
         assert_eq(breakfast, \"beignets with cafe au lait\");";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -175,7 +175,7 @@ fn compiler_local_var_declaration_test() {
     ";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -191,7 +191,7 @@ fn compiler_get_var_declaration_test() {
     ";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -209,7 +209,7 @@ fn compiler_get_local_and_global_vars_test() {
         }
     ";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{:?}", result); panic!() }
+    if result.is_err() { eprintln!("{result:?}"); panic!() }
 }
 
 #[test]
@@ -225,7 +225,7 @@ fn compiler_global_local_interaction_test() {
     ";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -243,7 +243,7 @@ fn compiler_global_local_nums_interaction_test() {
     ";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -264,7 +264,7 @@ fn compiler_multiple_blocks_global_interaction_test() {
     ";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
@@ -285,7 +285,7 @@ fn compiler_multiple_blocks_test() {
     ";
     let result = run_code(&mut vm, source);
     if result.is_err() {
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         panic!()
     }
 }
