@@ -1,4 +1,4 @@
-var condition = true;
-
+var condition = false;
 if (condition) print "condition was truthy";
+else print "condition was falsy";
 print "after condition";

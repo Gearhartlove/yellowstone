@@ -364,6 +364,33 @@ fn variable<'source, 'chunk>(
     }
 }
 
+// Parse rule for and logical operator
+fn and_<'source, 'chunk>(
+    parser: &mut Parser<'source, 'chunk>,
+    scanner: &mut Scanner<'source>,
+    current: &mut Compiler<'source>, // TODO: update every rule to add the compiler to it
+    can_assign: bool,
+) {
+    let end_jump = parser.emit_jump_if_false();
+    parser.emit_byte(OpCode::OP_POP);
+    parser.parse_precedence(Precedence::PREC_AND, scanner, current);
+    parser.patch_jump(end_jump);
+}
+
+fn or_<'source, 'chunk>(
+    parser: &mut Parser<'source, 'chunk>,
+    scanner: &mut Scanner<'source>,
+    current: &mut Compiler<'source>, // TODO: update every rule to add the compiler to it
+    can_assign: bool,
+) {
+    let else_jump = parser.emit_jump_if_false();
+    let end_jump = parser.emit_jump();
+    parser.patch_jump(else_jump);
+    parser.emit_byte(OpCode::OP_POP);
+    parser.parse_precedence(Precedence::PREC_OR, scanner, current);
+    parser.patch_jump(end_jump);
+}
+
 /// Looks at the previos and current token generates opcodes from the inputs.
 struct Parser<'source, 'chunk> {
     current: Option<Token<'source>>,
@@ -914,8 +941,8 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
         },
         TOKEN_AND => ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::PREC_NONE,
+            infix: Some(&and_),
+            precedence: Precedence::PREC_AND,
         },
         TOKEN_CLASS => ParseRule {
             prefix: None,
@@ -954,8 +981,8 @@ fn get_rule<'function, 'source, 'chunk>(kind: TokenKind) -> ParseRule<'function,
         },
         TOKEN_OR => ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::PREC_NONE,
+            infix: Some(&or_),
+            precedence: Precedence::PREC_OR,
         },
         TOKEN_PRINT => ParseRule {
             prefix: Some(&printing),

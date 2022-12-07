@@ -403,6 +403,74 @@ fn else_test() {
     }
 }
 
+#[test]
+fn condition_and_true_test() {
+    let mut vm = VM::default();
+    let source = String::from("
+        var num = 1;
+        if (true and true) {
+            num = 2;
+        }
+        assert_eq(2, num);
+    ");
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{result:?}");
+        panic!()
+    }
+}
+
+#[test]
+fn condition_and_false_test() {
+    let mut vm = VM::default();
+    let source = String::from("
+        var num = 1;
+        if (false and true) {
+            num = 2;
+        }
+        assert_eq(1, num);
+    ");
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{result:?}");
+        panic!()
+    }
+}
+
+#[test]
+fn condition_or_true_test() {
+    let mut vm = VM::default();
+    let source = String::from("
+        var num = 1;
+        if (true or false) {
+            num = 2;
+        }
+        assert_eq(2, num);
+    ");
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{result:?}");
+        panic!()
+    }
+}
+
+#[test]
+fn condition_or_false_test() {
+    let mut vm = VM::default();
+    let source = String::from("
+        var num = 1;
+        if (false or false) {
+            num = 2;
+        }
+        assert_eq(1, num);
+    ");
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{result:?}");
+        panic!()
+    }
+}
+
 // ################################################################################
 // Helper Functions
 // ################################################################################
