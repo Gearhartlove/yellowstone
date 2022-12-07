@@ -73,9 +73,9 @@ fn local_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
     }
 }
 
-fn jump_instruction(name: &str, sign: u32, chunk: &Chunk, offset: &mut u32) {
+fn jump_instruction(name: &str, sign: i32, chunk: &Chunk, offset: &mut u32) {
     if let OP_JUMP_AMOUNT(jump) = chunk.code.get((*offset + 1) as usize).unwrap() {
-        println!("{name} {offset} {}", (*offset + 2 + sign * (*jump as u32)));
+        println!("{name} {offset} {}", (*offset as i32 + 2 + sign as i32 * (*jump as i32)));
     }
     *offset += 1;
 }
@@ -118,7 +118,9 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
         // jump 
         OP_JUMP_IF_FALSE => jump_instruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
         OP_JUMP => jump_instruction("OP_JUMP", 1, chunk, offset),
+        OP_LOOP => jump_instruction("OP_LOOP", -1, chunk, offset),
         OP_PLACEHOLDER_JUMP_AMOUNT => simple_instruction("OP_PLACEHOLDER_JUMP_AMOUNT", offset),
         OP_JUMP_AMOUNT(_) => simple_instruction("", offset),
+        
     }
 }

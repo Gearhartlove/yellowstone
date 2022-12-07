@@ -299,7 +299,13 @@ impl VM {
                     Ok(())
                 }
                 OP_PLACEHOLDER_JUMP_AMOUNT => panic!("Placeholder Jump encountered."),
-                OP_JUMP_AMOUNT(_) => todo!(),
+                OP_JUMP_AMOUNT(_) => panic!("Placeholder Jump encountered."),
+                OP_LOOP => {
+                    if let OP_JUMP_AMOUNT(amount) = self.read_byte() {
+                        self.ip -= amount;
+                    }
+                    Ok(())
+                }
             };
 
             result?

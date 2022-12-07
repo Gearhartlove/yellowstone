@@ -32,6 +32,7 @@ pub enum OpCode {
     OP_JUMP,
     OP_PLACEHOLDER_JUMP_AMOUNT,
     OP_JUMP_AMOUNT(usize),
+    OP_LOOP,
 }
 
 /// Contains the bytecode instructions as well as constants created from parsing tokens.

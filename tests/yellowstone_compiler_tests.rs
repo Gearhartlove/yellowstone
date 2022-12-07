@@ -120,7 +120,7 @@ fn compiler_asserteq_string_test() {
 }
 
 #[test]
-fn global_var_test() {
+fn compiler_global_var_test() {
     let mut vm = VM::default();
     let source = "var lang = \"yellowstone\";";
     let result = run_code(&mut vm, source);
@@ -131,7 +131,7 @@ fn global_var_test() {
 }
 
 #[test]
-fn global_var_declaration() {
+fn compiler_global_var_declaration() {
     let mut vm = VM::default();
     let source = "
         var lang = \"yellowstone\";
@@ -152,7 +152,7 @@ fn global_var_declaration() {
 }
 
 #[test]
-fn mutate_global_vars_test() {
+fn compiler_mutate_global_vars_test() {
     let mut vm = VM::default();
     let source = "
         var beverage = \"cafe au lait\"; 
@@ -166,7 +166,7 @@ fn mutate_global_vars_test() {
 }
 
 #[test]
-fn local_var_declaration_test() {
+fn compiler_local_var_declaration_test() {
     let mut vm = VM::default();
     let source = "
         {
@@ -181,7 +181,7 @@ fn local_var_declaration_test() {
 }
 
 #[test]
-fn get_var_declaration_test() {
+fn compiler_get_var_declaration_test() {
     let mut vm = VM::default();
     let source = "
         {
@@ -197,7 +197,7 @@ fn get_var_declaration_test() {
 }
 
 #[test]
-fn get_local_and_global_vars_test() {
+fn compiler_get_local_and_global_vars_test() {
     let mut vm = VM::default();
     let source = "
         var start = \"yellow\";
@@ -213,7 +213,7 @@ fn get_local_and_global_vars_test() {
 }
 
 #[test]
-fn global_local_interaction_test() {
+fn compiler_global_local_interaction_test() {
     let mut vm = VM::default();
     let source = "
         var foo = \"yellow\";
@@ -231,7 +231,7 @@ fn global_local_interaction_test() {
 }
 
 #[test]
-fn global_local_nums_interaction_test() {
+fn compiler_global_local_nums_interaction_test() {
     let mut vm = VM::default();
     let source = "
         var foo = 9;
@@ -249,7 +249,7 @@ fn global_local_nums_interaction_test() {
 }
 
 #[test]
-fn multiple_blocks_global_interaction_test() {
+fn compiler_multiple_blocks_global_interaction_test() {
     let mut vm = VM::default();
     let source = "
         var foo = 0;
@@ -270,7 +270,7 @@ fn multiple_blocks_global_interaction_test() {
 }
 
 #[test]
-fn multiple_blocks_test() {
+fn compiler_multiple_blocks_test() {
     let mut vm = VM::default();
     let source = "
         {
@@ -291,7 +291,7 @@ fn multiple_blocks_test() {
 }
 
 #[test]
-fn variable_dropping_block_test() {
+fn compiler_variable_dropping_block_test() {
     let mut vm = VM::default();
     let source = "
         {
@@ -306,7 +306,7 @@ fn variable_dropping_block_test() {
 }
 
 #[test]
-fn variable_dropping_global_test() {
+fn compiler_variable_dropping_global_test() {
     let mut vm = VM::default();
     let source = "
         {
@@ -318,7 +318,7 @@ fn variable_dropping_global_test() {
 }
 
 #[test]
-fn variable_local_shadowing_test() {
+fn compiler_variable_local_shadowing_test() {
     let mut vm = VM::default();
     let source = "
         {
@@ -335,7 +335,7 @@ fn variable_local_shadowing_test() {
 }
 
 #[test]
-fn variable_local_global_shadowing_test() {
+fn compiler_variable_local_global_shadowing_test() {
     let mut vm = VM::default();
     let source = "
         var foo = \"first\";
@@ -353,7 +353,7 @@ fn variable_local_global_shadowing_test() {
 }
 
 #[test]
-fn if_true_test() {
+fn compiler_if_true_test() {
     let mut vm = VM::default();
     let source = String::from("
         var num = 1; 
@@ -369,7 +369,7 @@ fn if_true_test() {
 }
 
 #[test]
-fn if_false_test() {
+fn compiler_if_false_test() {
     let mut vm = VM::default();
     let source = String::from("
         var num = 1; 
@@ -385,7 +385,7 @@ fn if_false_test() {
 }
 
 #[test]
-fn else_test() {
+fn compiler_else_test() {
     let mut vm = VM::default();
     let source = String::from("
         var num = 1; 
@@ -404,7 +404,7 @@ fn else_test() {
 }
 
 #[test]
-fn condition_and_true_test() {
+fn compiler_condition_and_true_test() {
     let mut vm = VM::default();
     let source = String::from("
         var num = 1;
@@ -421,7 +421,7 @@ fn condition_and_true_test() {
 }
 
 #[test]
-fn condition_and_false_test() {
+fn compiler_condition_and_false_test() {
     let mut vm = VM::default();
     let source = String::from("
         var num = 1;
@@ -438,7 +438,7 @@ fn condition_and_false_test() {
 }
 
 #[test]
-fn condition_or_true_test() {
+fn compiler_condition_or_true_test() {
     let mut vm = VM::default();
     let source = String::from("
         var num = 1;
@@ -455,7 +455,7 @@ fn condition_or_true_test() {
 }
 
 #[test]
-fn condition_or_false_test() {
+fn compiler_condition_or_false_test() {
     let mut vm = VM::default();
     let source = String::from("
         var num = 1;
@@ -470,6 +470,24 @@ fn condition_or_false_test() {
         panic!()
     }
 }
+
+#[test]
+fn compiler_while_test() {
+    let mut vm = VM::default();
+    let source = String::from("
+        var num = 1;
+        while (num != 3) {
+            num = num + 1;
+        }
+        assert_eq(3, num);
+    ");
+    let result = run_code(&mut vm, source);
+    if result.is_err() {
+        eprintln!("{result:?}");
+        panic!()
+    }
+}
+
 
 // ################################################################################
 // Helper Functions

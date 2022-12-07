@@ -508,6 +508,26 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.emit_byte(OP_PRINT);
     }
 
+    fn while_statement(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
+        let loop_start = self.compiling_chunk.code.len();
+        self.consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.", scanner); 
+        self.expression(scanner, current);
+        self.consume(TOKEN_RIGHT_PAREN, "Expect ')' after 'while'.", scanner); 
+        let exit_jump = self.emit_jump_if_false();
+        self.emit_byte(OpCode::OP_POP);
+        self.statement(scanner, current);
+        // loop construct
+        self.emit_loop(loop_start);
+        self.patch_jump(exit_jump);
+        self.emit_byte(OpCode::OP_POP);
+    }
+
+    fn emit_loop(&mut self, loop_start: usize) {
+        self.emit_byte(OpCode::OP_LOOP);
+        let offset = self.compiling_chunk.code.len() - loop_start + 1;
+        self.emit_byte(OpCode::OP_JUMP_AMOUNT(offset));
+    }
+
     fn assert_eq_statement(
         &mut self,
         scanner: &mut Scanner<'source>,
@@ -657,6 +677,10 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                     current.begin_scope();
                     self.block(scanner, current);
                     current.end_scope(self);
+                }
+                TOKEN_WHILE => {
+                    self.advance(scanner);
+                    self.while_statement(scanner, current);
                 }
                 _ => self.expression_statement(scanner, current),
             }

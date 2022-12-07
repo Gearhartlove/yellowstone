@@ -404,3 +404,12 @@ fn tokenizer_or_condition_test() {
     assert_tokens_are!(source, TOKEN_IF, TOKEN_LEFT_PAREN, TOKEN_TRUE, TOKEN_OR, TOKEN_FALSE, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE, TOKEN_EOF)
     
 }
+
+#[test]
+fn tokenizer_while_test() {
+    let source = String::from("
+        while (true) {}
+    ");
+    assert_tokens_are!(source, TOKEN_WHILE, TOKEN_LEFT_PAREN, TOKEN_TRUE, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE, TOKEN_EOF)
+    
+}
