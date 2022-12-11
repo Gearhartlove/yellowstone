@@ -61,6 +61,7 @@ impl Display for TokenKind {
     }
 }
 
+#[derive(Debug)]
 pub struct Token<'source> {
     pub kind: TokenKind,
     pub slice: &'source str,

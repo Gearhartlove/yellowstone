@@ -67,11 +67,27 @@ fn tokenizer_global_var_managerie() {
     ";
 
     assert_tokens_are!(
-        source, 
-        TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_STRING, TOKEN_SEMICOLON,
-        TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_NUMBER, TOKEN_SEMICOLON,
-        TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_TRUE, TOKEN_SEMICOLON,
-        TOKEN_VAR, TOKEN_IDENTIFIER, TOKEN_EQUAL, TOKEN_NIL, TOKEN_SEMICOLON,
+        source,
+        TOKEN_VAR,
+        TOKEN_IDENTIFIER,
+        TOKEN_EQUAL,
+        TOKEN_STRING,
+        TOKEN_SEMICOLON,
+        TOKEN_VAR,
+        TOKEN_IDENTIFIER,
+        TOKEN_EQUAL,
+        TOKEN_NUMBER,
+        TOKEN_SEMICOLON,
+        TOKEN_VAR,
+        TOKEN_IDENTIFIER,
+        TOKEN_EQUAL,
+        TOKEN_TRUE,
+        TOKEN_SEMICOLON,
+        TOKEN_VAR,
+        TOKEN_IDENTIFIER,
+        TOKEN_EQUAL,
+        TOKEN_NIL,
+        TOKEN_SEMICOLON,
         TOKEN_EOF
     )
 }
@@ -364,52 +380,153 @@ fn tokenize_identifier_test() {
 
 #[test]
 fn tokenizer_block_test() {
-    let source = String:: from("{}");
+    let source = String::from("{}");
     assert_tokens_are!(source, TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE, TOKEN_EOF);
 
+    let source = String::from("{ var a = \"apple\"; }");
+    assert_tokens_are!(
+        source,
+        TOKEN_LEFT_BRACE,
+        TOKEN_VAR,
+        TOKEN_IDENTIFIER,
+        TOKEN_EQUAL,
+        TOKEN_STRING,
+        TOKEN_SEMICOLON,
+        TOKEN_RIGHT_BRACE,
+        TOKEN_EOF
+    );
 
-    let source = String:: from("{ var a = \"apple\"; }");
-    assert_tokens_are!(source, TOKEN_LEFT_BRACE, TOKEN_VAR, TOKEN_IDENTIFIER,
-        TOKEN_EQUAL, TOKEN_STRING, TOKEN_SEMICOLON,TOKEN_RIGHT_BRACE, TOKEN_EOF);
-
-
-    let source = String:: from("print \"hello\"; { \"world\" }");
-    assert_tokens_are!(source, TOKEN_PRINT, TOKEN_STRING, TOKEN_SEMICOLON,
-        TOKEN_LEFT_BRACE, TOKEN_STRING,TOKEN_RIGHT_BRACE, TOKEN_EOF);
+    let source = String::from("print \"hello\"; { \"world\" }");
+    assert_tokens_are!(
+        source,
+        TOKEN_PRINT,
+        TOKEN_STRING,
+        TOKEN_SEMICOLON,
+        TOKEN_LEFT_BRACE,
+        TOKEN_STRING,
+        TOKEN_RIGHT_BRACE,
+        TOKEN_EOF
+    );
 }
 
 #[test]
 fn tokenizer_assert_test() {
     let source = String::from("assert_eq(true, true)");
-    assert_tokens_are!(source, TOKEN_ASSERT_EQ, TOKEN_LEFT_PAREN, TOKEN_TRUE, TOKEN_COMMA, TOKEN_TRUE, TOKEN_RIGHT_PAREN, TOKEN_EOF);
+    assert_tokens_are!(
+        source,
+        TOKEN_ASSERT_EQ,
+        TOKEN_LEFT_PAREN,
+        TOKEN_TRUE,
+        TOKEN_COMMA,
+        TOKEN_TRUE,
+        TOKEN_RIGHT_PAREN,
+        TOKEN_EOF
+    );
 }
 
 #[test]
 fn if_single_expression_test() {
     let source = String::from("if (condition) { print \"hello\"; }");
-    assert_tokens_are!(source, TOKEN_IF, TOKEN_LEFT_PAREN, TOKEN_IDENTIFIER, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE, TOKEN_PRINT, TOKEN_STRING, TOKEN_SEMICOLON, TOKEN_RIGHT_BRACE)
+    assert_tokens_are!(
+        source,
+        TOKEN_IF,
+        TOKEN_LEFT_PAREN,
+        TOKEN_IDENTIFIER,
+        TOKEN_RIGHT_PAREN,
+        TOKEN_LEFT_BRACE,
+        TOKEN_PRINT,
+        TOKEN_STRING,
+        TOKEN_SEMICOLON,
+        TOKEN_RIGHT_BRACE
+    )
 }
 
 #[test]
 fn if_statements_test() {
     let source = String::from("if (condition) { print \"hello\"; print \"world\"; }");
-    assert_tokens_are!(source, TOKEN_IF, TOKEN_LEFT_PAREN, TOKEN_IDENTIFIER, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE, TOKEN_PRINT, TOKEN_STRING, TOKEN_SEMICOLON, TOKEN_PRINT, TOKEN_STRING, TOKEN_SEMICOLON, TOKEN_RIGHT_BRACE)
+    assert_tokens_are!(
+        source,
+        TOKEN_IF,
+        TOKEN_LEFT_PAREN,
+        TOKEN_IDENTIFIER,
+        TOKEN_RIGHT_PAREN,
+        TOKEN_LEFT_BRACE,
+        TOKEN_PRINT,
+        TOKEN_STRING,
+        TOKEN_SEMICOLON,
+        TOKEN_PRINT,
+        TOKEN_STRING,
+        TOKEN_SEMICOLON,
+        TOKEN_RIGHT_BRACE
+    )
 }
 
 #[test]
 fn tokenizer_or_condition_test() {
-    let source = String::from("
+    let source = String::from(
+        "
         if (true or false) {}
-    ");
-    assert_tokens_are!(source, TOKEN_IF, TOKEN_LEFT_PAREN, TOKEN_TRUE, TOKEN_OR, TOKEN_FALSE, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE, TOKEN_EOF)
-    
+    ",
+    );
+    assert_tokens_are!(
+        source,
+        TOKEN_IF,
+        TOKEN_LEFT_PAREN,
+        TOKEN_TRUE,
+        TOKEN_OR,
+        TOKEN_FALSE,
+        TOKEN_RIGHT_PAREN,
+        TOKEN_LEFT_BRACE,
+        TOKEN_RIGHT_BRACE,
+        TOKEN_EOF
+    )
 }
 
 #[test]
 fn tokenizer_while_test() {
-    let source = String::from("
+    let source = String::from(
+        "
         while (true) {}
-    ");
-    assert_tokens_are!(source, TOKEN_WHILE, TOKEN_LEFT_PAREN, TOKEN_TRUE, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE, TOKEN_RIGHT_BRACE, TOKEN_EOF)
-    
+    ",
+    );
+    assert_tokens_are!(
+        source,
+        TOKEN_WHILE,
+        TOKEN_LEFT_PAREN,
+        TOKEN_TRUE,
+        TOKEN_RIGHT_PAREN,
+        TOKEN_LEFT_BRACE,
+        TOKEN_RIGHT_BRACE,
+        TOKEN_EOF
+    )
+}
+
+#[test]
+fn tokenizer_for_test() {
+    let source = String::from(
+        "
+        for (i = 0; i < 1; i += 1) {}
+    ",
+    );
+    assert_tokens_are!(
+        source,
+        TOKEN_FOR,
+        TOKEN_LEFT_PAREN,
+        TOKEN_IDENTIFIER,
+        TOKEN_EQUAL,
+        TOKEN_NUMBER,
+        TOKEN_SEMICOLON,
+        TOKEN_IDENTIFIER,
+        TOKEN_LESS,
+        TOKEN_NUMBER,
+        TOKEN_SEMICOLON,
+        TOKEN_IDENTIFIER,
+        TOKEN_PLUS,
+        TOKEN_EQUAL,
+        TOKEN_NUMBER,
+        TOKEN_RIGHT_PAREN,
+        TOKEN_LEFT_BRACE,
+        TOKEN_RIGHT_BRACE,
+        TOKEN_EOF
+    )
 }

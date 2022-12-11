@@ -5,7 +5,7 @@ use crate::error::InterpretError;
 use crate::scanner::TokenKind::*;
 use crate::scanner::{Scanner, Token, TokenKind};
 use crate::value::{allocate_object, Value};
-use anyhow::{Result};
+use anyhow::Result;
 
 const DEBUG_PRINT_CODE: bool = false;
 
@@ -150,7 +150,7 @@ impl<'source> Compiler<'source> {
                     parser.emit_byte(OpCode::OP_POP);
                     pop_count += 1;
                 } else {
-                    break
+                    break;
                 }
             }
         }
@@ -191,7 +191,9 @@ impl<'source> Compiler<'source> {
     fn resolve_local(&mut self, name: &'source str) -> usize {
         // check if variable is a local
         for l in self.locals.iter().rev().flatten() {
-            if l.name == name { return l.index.unwrap() }
+            if l.name == name {
+                return l.index.unwrap();
+            }
         }
 
         usize::MAX
@@ -510,9 +512,9 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
 
     fn while_statement(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
         let loop_start = self.compiling_chunk.code.len();
-        self.consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.", scanner); 
+        self.consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.", scanner);
         self.expression(scanner, current);
-        self.consume(TOKEN_RIGHT_PAREN, "Expect ')' after 'while'.", scanner); 
+        self.consume(TOKEN_RIGHT_PAREN, "Expect ')' after 'while'.", scanner);
         let exit_jump = self.emit_jump_if_false();
         self.emit_byte(OpCode::OP_POP);
         self.statement(scanner, current);
@@ -558,11 +560,53 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.expression(scanner, current);
     }
 
-    fn if_statement(
-        &mut self,
-        scanner: &mut Scanner<'source>,
-        current: &mut Compiler<'source>,
-    ) {
+    fn for_statement(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
+        current.begin_scope();
+        self.consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.", scanner);
+        if self.match_token(TOKEN_SEMICOLON, scanner) {
+            // No initializer
+        } else if self.match_token(TOKEN_VAR, scanner) {
+            self.var_declaration(scanner, current)
+        } else {
+            self.expression_statement(scanner, current)
+        }
+
+        let mut loop_start = self.compiling_chunk.code.len();
+        let mut exit_jump = 0;
+        if !self.match_token(TOKEN_SEMICOLON, scanner) {
+            self.expression(scanner, current);
+            self.consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.", scanner);
+
+            // Jump out of the loop if the condition is false.
+            exit_jump = self.emit_jump_if_false();
+            self.emit_byte(OpCode::OP_POP);
+        }
+
+        if !self.match_token(TOKEN_RIGHT_PAREN, scanner) {
+            let body_jump = self.emit_jump();
+            let increment_start = self.compiling_chunk.code.len();
+            self.expression(scanner, current);
+            self.emit_byte(OpCode::OP_POP);
+            self.consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.", scanner);
+
+            self.emit_loop(loop_start);
+            loop_start = increment_start;
+            self.patch_jump(body_jump);
+        }
+
+        self.statement(scanner, current);
+        self.emit_loop(loop_start);
+
+        if exit_jump == 0 {
+            // fix this zero and negative one problem
+            self.patch_jump(exit_jump);
+            self.emit_byte(OpCode::OP_POP); // Condition
+        }
+
+        current.end_scope(self);
+    }
+
+    fn if_statement(&mut self, scanner: &mut Scanner<'source>, current: &mut Compiler<'source>) {
         self.consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.", scanner);
         self.expression(scanner, current);
         self.consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition", scanner);
@@ -681,6 +725,10 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                 TOKEN_WHILE => {
                     self.advance(scanner);
                     self.while_statement(scanner, current);
+                }
+                TOKEN_FOR => {
+                    self.advance(scanner);
+                    self.for_statement(scanner, current);
                 }
                 _ => self.expression_statement(scanner, current),
             }
@@ -813,16 +861,22 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
         self.emit_byte(OpCode::OP_CONSTANT(value))
     }
 
-    /// Goes back into the bytecode and replaces the operand at the given 
-    /// location with the calculated jump offset. 
+    /// Goes back into the bytecode and replaces the operand at the given
+    /// location with the calculated jump offset.
     fn patch_jump(&mut self, offset: usize) {
-        let jump = self.compiling_chunk.code.len() - offset - 1; // OBO?
+        let jump = if offset == 0 {
+            self.compiling_chunk.code.len() - 2
+        } else {
+            self.compiling_chunk.code.len() - offset - 1
+        };
 
         // Replace placeholder jump with OP_JUMP
         // where to remove?
         let placeholder = self.compiling_chunk.code.remove(offset);
         assert_eq!(OpCode::OP_PLACEHOLDER_JUMP_AMOUNT, placeholder);
-        self.compiling_chunk.code.insert(offset, OpCode::OP_JUMP_AMOUNT(jump));
+        self.compiling_chunk
+            .code
+            .insert(offset, OpCode::OP_JUMP_AMOUNT(jump));
     }
 
     fn emit_byte(&mut self, opcode: OpCode) {
@@ -838,7 +892,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
     fn emit_jump_if_false(&mut self) -> usize {
         self.emit_byte(OpCode::OP_JUMP_IF_FALSE);
         self.emit_byte(OpCode::OP_PLACEHOLDER_JUMP_AMOUNT);
-        self.compiling_chunk.code.len() - 1 
+        self.compiling_chunk.code.len() - 1
     }
 
     fn emit_jump(&mut self) -> usize {

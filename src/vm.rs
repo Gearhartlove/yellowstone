@@ -177,7 +177,8 @@ impl VM {
                             self.push(stack_value);
                             Ok(())
                         }
-                        None => Err(RUNTIME_UNRECOGNIZED_VARIABLE_ERROR).context(format!("undefined variable: {key}")),
+                        None => Err(RUNTIME_UNRECOGNIZED_VARIABLE_ERROR)
+                            .context(format!("undefined variable: {key}")),
                     }
                 }
                 OP_SET_GLOBAL(index) => {
@@ -206,7 +207,7 @@ impl VM {
                             }
                             self.push(l.clone());
                             Ok(())
-                        },
+                        }
                         None => Err(RUNTIME_UNRECOGNIZED_VARIABLE_ERROR)?,
                     }
                 }
