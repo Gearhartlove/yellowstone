@@ -12,4 +12,14 @@ A simple scripting language inspired by Robert Nystrom's [Crafting Interpreters]
 Although many language features work, the purpose of this programming language is designed to be educational. It is still in very early stages of development, and parts of code may not function as expected. Documentation is sparse. Please do not attempt to write any serious programs in yellowstone unless you are prepared for many bugs. 
 
 # Design Goals 
+* **Test Driven Development**: write many unit and integration tests
+* **REPL**: able to write yellowstone in a continious session
+* **File**: write code in a '*.ys' file and run the code 
+* **Brave**: try to implement good solutions to hard problems 
+* **Pure Rust**: source code in 100% Rust
+* **No Dependencies**: write all of the code myself 
 
+# Docs
+* [Yellowstone Book]()
+
+# Getting Started 
