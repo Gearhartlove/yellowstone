@@ -177,7 +177,7 @@ var z = nil
 The name of a variable can be temporarily overwritten with a different variable assignment.
 
 ```js
-var foo = \"first\";
+var foo = "first";
 
 {
   var foo = "second";
