@@ -3,15 +3,9 @@ pub fn is_digit(c: &str) -> bool {
 }
 
 pub fn is_alpha(c: &str) -> bool {
-    ("a"..="z").contains(&c)
-    || ("A"..="Z").contains(&c)
-    || c == "_"
+    ("a"..="z").contains(&c) || ("A"..="Z").contains(&c) || c == "_"
 }
 
 pub fn grow_capacity(capacity: usize) -> usize {
-    return if capacity <= 1 {
-        8
-    } else {
-        capacity * 2
-    }
+    return if capacity <= 1 { 8 } else { capacity * 2 };
 }

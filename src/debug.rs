@@ -21,8 +21,7 @@ fn constant_instruction(instruction: &OpCode, offset: &mut u32) {
         println!("{}", format_args!("OP_CONSTANT {const_val:?}"));
         *offset += 1;
     } else {
-        panic!(
-            "The instruction at offset {offset} is not a constant instruction.");
+        panic!("The instruction at offset {offset} is not a constant instruction.");
     }
 }
 
@@ -58,24 +57,29 @@ fn global_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
 fn local_instruction(instruction: &OpCode, offset: &mut u32, chunk: &Chunk) {
     match instruction {
         OP_SET_LOCAL(i) => {
-            println!("OP_SET_LOCAL {:?} {:?}", chunk.get_constant_name(i), chunk.constants.get(*i).unwrap());
+            println!(
+                "OP_SET_LOCAL {:?} {:?}",
+                chunk.get_constant_name(i),
+                chunk.constants.get(*i).unwrap()
+            );
             *offset += 1;
-        },
+        }
         OP_GET_LOCAL(i) => {
             println!("OP_GET_LOCAL {:?}", chunk.constants.get(*i).unwrap());
             *offset += 1;
-        },
+        }
         _ => {
-            panic!(
-                "The instruction at offset {offset} is not a local instruction."
-            )
+            panic!("The instruction at offset {offset} is not a local instruction.")
         }
     }
 }
 
 fn jump_instruction(name: &str, sign: i32, chunk: &Chunk, offset: &mut u32) {
     if let OP_JUMP_AMOUNT(jump) = chunk.code.get((*offset + 1) as usize).unwrap() {
-        println!("{name} {offset} {}", (*offset as i32 + 2 + sign as i32 * (*jump as i32)));
+        println!(
+            "{name} {offset} {}",
+            (*offset as i32 + 2 + sign as i32 * (*jump as i32))
+        );
     }
     *offset += 1;
 }
@@ -115,12 +119,11 @@ fn disassemble_instruction(instruction: &OpCode, offset: &mut u32, lines: &Strin
         OP_DEBUG => {
             todo!()
         }
-        // jump 
+        // jump
         OP_JUMP_IF_FALSE => jump_instruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
         OP_JUMP => jump_instruction("OP_JUMP", 1, chunk, offset),
         OP_LOOP => jump_instruction("OP_LOOP", -1, chunk, offset),
         OP_PLACEHOLDER_JUMP_AMOUNT => simple_instruction("OP_PLACEHOLDER_JUMP_AMOUNT", offset),
         OP_JUMP_AMOUNT(_) => simple_instruction("", offset),
-        
     }
 }

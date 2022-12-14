@@ -1,10 +1,10 @@
 extern crate core;
 
-use anyhow::{Result};
+use anyhow::Result;
 use std::fmt::Display;
+use yellowstone::error::InterpretError::{self, *};
 use yellowstone::value::{Value, ValueKind};
 use yellowstone::vm::VM;
-use yellowstone::error::InterpretError::{*, self};
 
 #[test]
 fn compiler_unary() {
@@ -209,7 +209,10 @@ fn compiler_get_local_and_global_vars_test() {
         }
     ";
     let result = run_code(&mut vm, source);
-    if result.is_err() { eprintln!("{result:?}"); panic!() }
+    if result.is_err() {
+        eprintln!("{result:?}");
+        panic!()
+    }
 }
 
 #[test]
@@ -355,12 +358,14 @@ fn compiler_variable_local_global_shadowing_test() {
 #[test]
 fn compiler_if_true_test() {
     let mut vm = VM::default();
-    let source = String::from("
+    let source = String::from(
+        "
         var num = 1; 
         if (true) { 
             num = 2 
         } 
-        assert_eq(2, num);");
+        assert_eq(2, num);",
+    );
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{result:?}");
@@ -371,12 +376,14 @@ fn compiler_if_true_test() {
 #[test]
 fn compiler_if_false_test() {
     let mut vm = VM::default();
-    let source = String::from("
+    let source = String::from(
+        "
         var num = 1; 
         if (false) { 
             num = 2 
         } 
-        assert_eq(1, num);");
+        assert_eq(1, num);",
+    );
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{result:?}");
@@ -387,7 +394,8 @@ fn compiler_if_false_test() {
 #[test]
 fn compiler_else_test() {
     let mut vm = VM::default();
-    let source = String::from("
+    let source = String::from(
+        "
         var num = 1; 
         if (false) {  
             num = 2; 
@@ -395,7 +403,8 @@ fn compiler_else_test() {
             assert_eq(1, num);
             num = 3
         }
-        assert_eq(3, num);");
+        assert_eq(3, num);",
+    );
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{result:?}");
@@ -406,13 +415,15 @@ fn compiler_else_test() {
 #[test]
 fn compiler_condition_and_true_test() {
     let mut vm = VM::default();
-    let source = String::from("
+    let source = String::from(
+        "
         var num = 1;
         if (true and true) {
             num = 2;
         }
         assert_eq(2, num);
-    ");
+    ",
+    );
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{result:?}");
@@ -423,13 +434,15 @@ fn compiler_condition_and_true_test() {
 #[test]
 fn compiler_condition_and_false_test() {
     let mut vm = VM::default();
-    let source = String::from("
+    let source = String::from(
+        "
         var num = 1;
         if (false and true) {
             num = 2;
         }
         assert_eq(1, num);
-    ");
+    ",
+    );
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{result:?}");
@@ -440,13 +453,15 @@ fn compiler_condition_and_false_test() {
 #[test]
 fn compiler_condition_or_true_test() {
     let mut vm = VM::default();
-    let source = String::from("
+    let source = String::from(
+        "
         var num = 1;
         if (true or false) {
             num = 2;
         }
         assert_eq(2, num);
-    ");
+    ",
+    );
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{result:?}");
@@ -457,13 +472,15 @@ fn compiler_condition_or_true_test() {
 #[test]
 fn compiler_condition_or_false_test() {
     let mut vm = VM::default();
-    let source = String::from("
+    let source = String::from(
+        "
         var num = 1;
         if (false or false) {
             num = 2;
         }
         assert_eq(1, num);
-    ");
+    ",
+    );
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{result:?}");
@@ -474,13 +491,15 @@ fn compiler_condition_or_false_test() {
 #[test]
 fn compiler_while_test() {
     let mut vm = VM::default();
-    let source = String::from("
+    let source = String::from(
+        "
         var num = 1;
         while (num != 3) {
             num = num + 1;
         }
         assert_eq(3, num);
-    ");
+    ",
+    );
     let result = run_code(&mut vm, source);
     if result.is_err() {
         eprintln!("{result:?}");
@@ -488,6 +507,24 @@ fn compiler_while_test() {
     }
 }
 
+// #[test]
+// fn compiler_for_test() {
+//     let mut vm = VM::default();
+//     let source = String::from(
+//         "
+//         var loops = 1;
+//         for (var i = 0; i < 2; i += 1) {
+//             loops += 1;
+//         }
+//         assert_eq(2, loops);
+//     ",
+//     );
+//     let result = run_code(&mut vm, source);
+//     if result.is_err() {
+//         eprintln!("{result:?}");
+//         panic!()
+//     }
+// }
 
 // ################################################################################
 // Helper Functions
@@ -502,19 +539,29 @@ pub fn run_code_expect_value<T: ToString + Display>(vm: &mut VM, source: T, expe
     match result {
         Ok(v) => {
             assert_eq!(expect, v);
-        },
-        _ => { eprintln!("error returned when value expected"); panic!() }
+        }
+        _ => {
+            eprintln!("error returned when value expected");
+            panic!()
+        }
     }
 }
 
-pub fn run_code_expect_error<T: ToString + Display>(vm: &mut VM, source: T, expect: InterpretError) {
+pub fn run_code_expect_error<T: ToString + Display>(
+    vm: &mut VM,
+    source: T,
+    expect: InterpretError,
+) {
     let result = run_code(vm, source);
     match result {
         Err(e) => {
             let root = e.root_cause();
             assert_eq!(format!("{root}"), expect.to_string());
-        },
-        _ => { eprintln!("value returned when error expected"); panic!() }
+        }
+        _ => {
+            eprintln!("value returned when error expected");
+            panic!()
+        }
     }
 }
 
@@ -547,7 +594,7 @@ pub fn bool_val(vm: &mut VM, variable_name: &'static str) -> Option<bool> {
             _ => None,
         }
     } else {
-       None
+        None
     }
 }
 

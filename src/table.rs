@@ -246,8 +246,14 @@ mod tests {
         let _ = table.insert("yellow", allocate_object("stone"));
         let _ = table.insert("bicycle", allocate_object("patagonia"));
 
-        assert_eq!(table.get_unchecked("yellow").as_string().unwrap(), String::from("stone"));
-        assert_eq!(table.get_unchecked("bicycle").as_string().unwrap(), String::from("patagonia"));
+        assert_eq!(
+            table.get_unchecked("yellow").as_string().unwrap(),
+            String::from("stone")
+        );
+        assert_eq!(
+            table.get_unchecked("bicycle").as_string().unwrap(),
+            String::from("patagonia")
+        );
     }
 
     #[test]
@@ -256,8 +262,14 @@ mod tests {
         let _ = table.insert("yellow", allocate_object("stone"));
         let _ = table.insert("bicycle", allocate_object("patagonia"));
 
-        assert_eq!(table.get_unchecked("yellow").as_string().unwrap(), String::from("stone"));
-        assert_eq!(table.get_unchecked("bicycle").as_string().unwrap(), String::from("patagonia"));
+        assert_eq!(
+            table.get_unchecked("yellow").as_string().unwrap(),
+            String::from("stone")
+        );
+        assert_eq!(
+            table.get_unchecked("bicycle").as_string().unwrap(),
+            String::from("patagonia")
+        );
 
         table.delete("yellow");
         table.delete("bicycle");
@@ -272,16 +284,28 @@ mod tests {
         let _ = table.insert("bicycle", allocate_object("patagonia"));
         let _ = table.insert("van", allocate_object("life"));
 
-        assert_eq!(table.get_unchecked("yellow").as_string().unwrap(), String::from("stone"));
-        assert_eq!(table.get_unchecked("bicycle").as_string().unwrap(), String::from("patagonia"));
-        assert_eq!(table.get_unchecked("van").as_string().unwrap(), String::from("life"));
+        assert_eq!(
+            table.get_unchecked("yellow").as_string().unwrap(),
+            String::from("stone")
+        );
+        assert_eq!(
+            table.get_unchecked("bicycle").as_string().unwrap(),
+            String::from("patagonia")
+        );
+        assert_eq!(
+            table.get_unchecked("van").as_string().unwrap(),
+            String::from("life")
+        );
 
         table.delete("yellow");
         table.delete("bicycle");
 
         assert_eq!(None, table.get("yellow"));
         assert_eq!(None, table.get("bicycle"));
-        assert_eq!(table.get_unchecked("van").as_string().unwrap(), String::from("life"));
+        assert_eq!(
+            table.get_unchecked("van").as_string().unwrap(),
+            String::from("life")
+        );
     }
 
     #[test]
