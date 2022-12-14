@@ -19,9 +19,17 @@ Although many language features work, the purpose of this programming language i
 * **Pure Rust**: source code in 100% Rust
 * **No Dependencies**: write all of the code myself 
 
+# Getting Started
+
+1. Clone the **Yellowstone repo**: ```git clone https://github.com/Gearhartlove/yellowstone```
+
+2. Navigate to the "yellowstone" folder
+
+3. Run the REPL and write some code with: ```cargo run```
+
 # Docs
 
-### Typing 
+## Typing 
 **Floats**
 
 The 32 bit signed `float` type. 
@@ -48,7 +56,7 @@ Conventional `null` type.
 nil
 ```
 
-### Operations
+## Operations
 **Adding**
 
 Add two `strings` or `floats` together with the binary `+` operator. Cannot add different types to each other.
@@ -98,7 +106,7 @@ Divide two logical expressions together with binary `/` operator.
 6 / 10 // evaluates to 0.6
 ```
 
-### Statements
+## Statements
 
 **if else**
 
@@ -152,7 +160,7 @@ assert_eq(true, 3==3); // assert statement passes, execution continues.
 assert_eq(false, 3==3); // error returned: RUNTIME_ASSERT_ERROR.
 ```
 
-### variables
+## Variables
 
 **assignment**
 
@@ -178,5 +186,3 @@ var foo = \"first\";
 
 assert_eq(foo, "first"); 
 ```
-
-# Getting Started 
