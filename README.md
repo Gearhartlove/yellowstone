@@ -20,6 +20,83 @@ Although many language features work, the purpose of this programming language i
 * **No Dependencies**: write all of the code myself 
 
 # Docs
-* [Yellowstone Book]()
+
+### Typing 
+**Floats**
+
+The 32 bit signed `float` type. 
+```js
+42.0
+```
+**Booleans**
+
+true and false represent the logical `true` and `false` repectively. 
+```js
+true
+false
+```
+**Strings**
+
+A UTF-8-encoded, growable `string`. Supports concatenation. 
+```js
+"Hello World"
+```
+**Null**
+
+Conventional `null` type.
+```js
+null
+```
+
+### Operations
+**Adding**
+
+Add two `strings` or `floats` together with the binary `+` operator. Cannot add different types to each other.
+
+```js
+1 + 1 // evaluates to 2
+4 * 5 + 3 // evaluates to (4*5)+3 -> 20+3 -> 23
+"Hello " + "World" // evaluates to "Hello World"
+```
+
+**Subtracting**
+
+Subtract two float expressinos together with the binary `-` operator. 
+
+```js
+1 - 1 // evaluates to 0
+(4*5) - 3 // evaluates to (4*5)-3 -> 20-3 -> 17
+```
+
+**Logical**
+
+Compare two expressions using the `&&` or `||` operator. 
+
+```js
+true && false // evaluates to false
+true && true // evaluates to true
+true || false // evaluates to true
+false || false // evaluates to false
+```
+
+**Multiplication**
+
+Multiply two logical expressions together with binary `*` operator. 
+
+```js
+1 * 8 // evaluates to 8
+1 * 2 * 3 // evaluates to 6
+```
+
+**Division**
+
+Divide two logical expressions together with binary `/` operator. 
+
+```js
+6 / 3  // evaluates to 2
+6 / 4  // evaluates to 1.5
+6 / 10 // evaluates to 0.6
+```
+
 
 # Getting Started 
