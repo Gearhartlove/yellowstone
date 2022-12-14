@@ -1,5 +1,5 @@
 use crate::error::InterpretError;
-use std::fmt::{Debug, Formatter, Display};
+use std::fmt::{Debug, Display, Formatter};
 use std::mem::ManuallyDrop;
 use std::rc::Rc;
 
@@ -15,14 +15,6 @@ pub union ValueUnion {
     b: bool,
     o: ManuallyDrop<Rc<dyn ObjectHandler>>,
 }
-
-type YSObject = ManuallyDrop<Rc<dyn ObjectHandler>>;
-
-// impl Display for YSObject {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         write!("testtesttest")
-//     }
-// }
 
 #[repr(u32)]
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -166,10 +158,10 @@ impl Debug for Value {
                 Value {
                     kind: ValueKind::ValNil,
                     u: ValueUnion { f },
-                } => write!(fmtr, "{f}"), 
+                } => write!(fmtr, "{f}"),
                 Value {
                     kind: ValueKind::ValNumber,
-                    u: ValueUnion { f},
+                    u: ValueUnion { f },
                 } => write!(fmtr, "{f}"),
                 Value {
                     kind: ValueKind::ValObj,
@@ -296,38 +288,46 @@ impl Value {
     pub fn is_bool(&self) -> bool {
         unsafe {
             matches!(
-                self, Value {
+                self,
+                Value {
                     kind: ValueKind::ValBool,
                     u: ValueUnion { b: _b },
-                })
+                }
+            )
         }
     }
 
     pub fn is_nil(&self) -> bool {
         matches!(
-            self, Value {
+            self,
+            Value {
                 kind: ValueKind::ValNil,
                 u: ValueUnion { f: _ },
-            })
+            }
+        )
     }
 
     pub fn is_number(&self) -> bool {
         unsafe {
             matches!(
-                self, Value {
+                self,
+                Value {
                     kind: ValueKind::ValNumber,
                     u: ValueUnion { f: _f },
-                })
+                }
+            )
         }
     }
 
     pub fn is_obj(&self) -> bool {
         unsafe {
             matches!(
-                self, Value {
+                self,
+                Value {
                     kind: ValueKind::ValObj,
                     u: ValueUnion { o: _o },
-                })
+                }
+            )
         }
     }
 

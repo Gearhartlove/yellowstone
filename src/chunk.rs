@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use crate::value::Value;
 
 /// Yellowstone VM byte-code instructions.

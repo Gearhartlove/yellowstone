@@ -16,8 +16,6 @@ pub enum InterpretOk {
     INTERPRET_OK,
 }
 
-const STACK_MAX: usize = 256;
-
 #[allow(non_snake_case)]
 #[derive(Default)]
 pub struct VM {
@@ -30,7 +28,7 @@ pub struct VM {
 }
 
 impl VM {
-    pub const DEBUG_EXECUTION_TRACING: bool = true;
+    pub const DEBUG_EXECUTION_TRACING: bool = false;
 
     pub fn interpret(&mut self, source: &String) -> Result<Option<Value>> {
         let result = compile(source);
@@ -177,7 +175,8 @@ impl VM {
                             self.push(stack_value);
                             Ok(())
                         }
-                        None => Err(RUNTIME_UNRECOGNIZED_VARIABLE_ERROR).context(format!("undefined variable: {key}")),
+                        None => Err(RUNTIME_UNRECOGNIZED_VARIABLE_ERROR)
+                            .context(format!("undefined variable: {key}")),
                     }
                 }
                 OP_SET_GLOBAL(index) => {
@@ -206,7 +205,7 @@ impl VM {
                             }
                             self.push(l.clone());
                             Ok(())
-                        },
+                        }
                         None => Err(RUNTIME_UNRECOGNIZED_VARIABLE_ERROR)?,
                     }
                 }
@@ -316,11 +315,6 @@ impl VM {
         let instruction = self.chunk.code.get(self.ip).unwrap().clone();
         self.ip += 1;
         instruction
-    }
-
-    pub fn with_chunk(mut self, chunk: Chunk) -> Self {
-        self.chunk = chunk;
-        self
     }
 }
 

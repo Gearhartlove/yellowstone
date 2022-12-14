@@ -1,3 +1,4 @@
+#![allow(warnings)]
 extern crate core;
 
 use crate::chunk::Chunk;
@@ -5,6 +6,8 @@ use crate::debug::disassemble_chunk;
 use crate::vm::VM;
 use std::env;
 use std::fs;
+use std::io::Write;
+use std::io::stdout;
 
 mod chunk;
 mod compiler;
@@ -47,15 +50,19 @@ fn run_file(mut vm: VM, path: &String) {
 }
 
 fn repl(mut vm: VM) {
+    println!("[yellowstone repl]");
+    println!("(type `exit` or `quit` to stop session)");
+
     let mut line = String::new();
     loop {
+        print!(">> ");
+        let _ = stdout().flush(); // Flushed the input buffering. Used for formatting.
+
         // request std input stream and print result
         match std::io::stdin().read_line(&mut line) {
             Ok(_) => match line.as_str() {
                 "exit" | "Exit" | "Quit" | "quit" | "q" => break,
-                _ => {
-                    print!("> {line}")
-                }
+                _ => {}
             },
             Err(error) => println!("> error: {error}"),
         }
