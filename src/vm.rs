@@ -16,8 +16,6 @@ pub enum InterpretOk {
     INTERPRET_OK,
 }
 
-const STACK_MAX: usize = 256;
-
 #[allow(non_snake_case)]
 #[derive(Default)]
 pub struct VM {
@@ -30,7 +28,7 @@ pub struct VM {
 }
 
 impl VM {
-    pub const DEBUG_EXECUTION_TRACING: bool = true;
+    pub const DEBUG_EXECUTION_TRACING: bool = false;
 
     pub fn interpret(&mut self, source: &String) -> Result<Option<Value>> {
         let result = compile(source);
@@ -317,11 +315,6 @@ impl VM {
         let instruction = self.chunk.code.get(self.ip).unwrap().clone();
         self.ip += 1;
         instruction
-    }
-
-    pub fn with_chunk(mut self, chunk: Chunk) -> Self {
-        self.chunk = chunk;
-        self
     }
 }
 

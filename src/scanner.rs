@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Design Decision: Scan token only when the compiler needs a token
 
 use crate::scanner::TokenKind::*;

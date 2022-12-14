@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use crate::chunk::OpCode::OP_PRINT;
 use crate::chunk::{Chunk, OpCode};
 use crate::debug::disassemble_chunk;
@@ -763,7 +764,7 @@ impl<'source, 'chunk> Parser<'source, 'chunk> {
                 }
             }
         } else {
-            eprint!("Expect expression.");
+            //eprint!("Expect expression.");
         }
     }
 

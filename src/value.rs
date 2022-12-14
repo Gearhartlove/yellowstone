@@ -16,14 +16,6 @@ pub union ValueUnion {
     o: ManuallyDrop<Rc<dyn ObjectHandler>>,
 }
 
-type YSObject = ManuallyDrop<Rc<dyn ObjectHandler>>;
-
-// impl Display for YSObject {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         write!("testtesttest")
-//     }
-// }
-
 #[repr(u32)]
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum ValueKind {

@@ -1,7 +1,7 @@
+#![allow(warnings)]
 use crate::util::grow_capacity;
 use crate::value::Value;
 use core::panic;
-use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
 // ################################################################
